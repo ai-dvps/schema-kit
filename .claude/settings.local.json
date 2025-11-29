@@ -20,7 +20,20 @@
       "SlashCommand(/commit)",
       "Bash(git reset:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(perl -i -pe 's/\\bT(\\d{2,3})\\b/ $1 >= 11 ? sprintf(\"\"T%03d\"\", $1+1) : $1 /ge; s/T(\\d+)/\"\"T\"\".sprintf(\"\"%03d\"\",$1)/ge' specs/1-sql-schema-diff/tasks.md)",
+      "Bash(perl:*)",
+      "Bash(for i in {001..025})",
+      "Bash(do:*)",
+      "Bash(if ! grep -q \"^\\- \\[ \\] \\*\\*T$i\" specs/1-sql-schema-diff/tasks.md)",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(./specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
