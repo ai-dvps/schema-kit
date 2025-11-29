@@ -41,13 +41,13 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-spotless {
-    java {
-        googleJavaFormat('1.17.0').aosp()
-        formatAnnotations()
-        importOrder()
-        removeUnusedImports()
-        cleanthat()
-        lineEndings 'UNIX'
-    }
-}
+//spotless {
+//    java {
+//        googleJavaFormat('1.17.0').aosp()
+//        formatAnnotations()
+//        importOrder()
+//        removeUnusedImports()
+//        cleanthat()
+//        lineEndings 'UNIX'
+//    }
+//}
