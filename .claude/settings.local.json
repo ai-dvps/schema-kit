@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(test:*)",
+      "Bash(git fetch:*)",
+      "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
+      "Bash(.specify/scripts/bash/setup-plan.sh:*)",
+      "Bash(.specify/scripts/bash/update-agent-context.sh:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(chmod:*)",
+      "Bash(./gradlew:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(python3 -c:*)",
+      "Bash(echo:*)",
+      "Bash(/tmp/phase4_summary.txt)",
+      "Bash(bash:*)",
+      "Bash(xargs cat:*)",
+      "SlashCommand(/commit)",
+      "Bash(git reset:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

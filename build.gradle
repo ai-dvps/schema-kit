@@ -1,0 +1,53 @@
+plugins {
+    id 'java'
+    id 'com.diffplug.spotless' version '6.21.0'
+    id 'jacoco'
+}
+
+group = 'com.aidvps.schemakit'
+version = '1.1.0'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core:5.7.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Testcontainers for integration testing
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.2'
+    testImplementation 'org.testcontainers:mysql:1.19.2'
+    testImplementation 'org.testcontainers:postgresql:1.19.2'
+    testImplementation 'org.testcontainers:oracle-xe:1.19.2'
+    testImplementation 'org.testcontainers:mssqlserver:1.19.2'
+}
+
+
+test {
+    useJUnitPlatform()
+}
+
+// Java version compatibility testing
+sourceCompatibility = '8'
+targetCompatibility = '8'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+spotless {
+    java {
+        googleJavaFormat('1.17.0').aosp()
+        formatAnnotations()
+        importOrder()
+        removeUnusedImports()
+        cleanthat()
+        lineEndings 'UNIX'
+    }
+}

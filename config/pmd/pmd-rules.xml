@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Schema Kit PMD Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+         https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>Custom PMD rules for Schema Kit v2 - focusing on critical issues only</description>
+
+    <!-- Only include critical rules for this phase -->
+
+    <!-- Errorprone: Only critical issues -->
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="AvoidBranchingStatementAsLastInLoop"/>
+        <exclude name="AvoidDeeplyNestedIfStmts"/>
+        <exclude name="AvoidMultipleLiterals"/>
+        <exclude name="AvoidThrowingNullPointerException"/>
+        <exclude name="AvoidThrowingRawExceptionTypes"/>
+        <exclude name="AvoidUsingHardCodedIP"/>
+        <exclude name="CheckResultSet"/>
+        <exclude name="CheckSkipResult"/>
+        <exclude name="ClassCastExceptionWithToArray"/>
+        <exclude name="CollapsibleIfStatements"/>
+        <exclude name="CompareObjectsWithEquals"/>
+        <exclude name="BrokenNullCheck"/>
+        <exclude name="UnusedNullCheckInEquals"/>
+    </rule>
+
+    <!-- Performance: Only critical issues -->
+    <rule ref="category/java/performance.xml">
+        <exclude name="AddEmptyString"/>
+        <exclude name="AppendCharacterWithChar"/>
+        <exclude name="AvoidArrayLoops"/>
+        <exclude name="AvoidCalendarDateCreation"/>
+        <exclude name="AvoidDateNow"/>
+        <exclude name="AvoidFileStream"/>
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+        <exclude name="AvoidSmallClass"/>
+        <exclude name="BigIntegerInstantiation"/>
+        <exclude name="BooleanInstantiation"/>
+        <exclude name="ByteInstantiation"/>
+        <exclude name="DoubleBraceInitialization"/>
+        <exclude name="IntegerInstantiation"/>
+        <exclude name="LongInstantiation"/>
+        <exclude name="ShortInstantiation"/>
+        <exclude name="SimplifyStartsWith"/>
+        <exclude name="StringInstantiation"/>
+        <exclude name="UnnecessaryWrapperObjectCreation"/>
+        <exclude name="UseArrayListInsteadOfVector"/>
+        <exclude name="UseArraysAsList"/>
+        <exclude name="UseStringBufferForStringAppends"/>
+    </rule>
+
+    <!-- Best practices: Only very important ones -->
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="AbstractClassWithoutAbstractMethods"/>
+        <exclude name="AccessorMethodGeneration"/>
+        <exclude name="ArrayIsStoredDirectly"/>
+        <exclude name="AvoidReassigningLoopParameters"/>
+        <exclude name="AvoidReassigningParameters"/>
+        <exclude name="AvoidSynchronizedAtMethodLevel"/>
+        <exclude name="AvoidThreadGroup"/>
+        <exclude name="AvoidUsingHardCodedPort"/>
+        <exclude name="CheckResultSet"/>
+        <exclude name="ConstantsInInterface"/>
+        <exclude name="DefaultLabelNotLastInSwitchStmt"/>
+        <exclude name="EmptyMethodInAbstractClassShouldBeAbstract"/>
+        <exclude name="FinalizeDoesNotCallSuperFinalize"/>
+        <exclude name="FinalizeOnlyCallsSuperFinalize"/>
+        <exclude name="IdempotentOperations"/>
+        <exclude name="JUnitAssertionsShouldIncludeMessage"/>
+        <exclude name="JUnitTestContainsTooManyAsserts"/>
+        <exclude name="LiteralsFirstInComparisons"/>
+        <exclude name="LooseCoupling"/>
+        <exclude name="MethodReturnsInternalArray"/>
+        <exclude name="NcssCount"/>
+        <exclude name="NoEth嫁给Java"/>
+        <exclude name="PositionLiteralsFirstInCaseInsensitiveComparisons"/>
+        <exclude name="PositionLiteralsFirstInComparisons"/>
+        <exclude name="PreserveStackTrace"/>
+        <exclude name="ReturnEmptyArrayRatherThanNull"/>
+        <exclude name="ShortCircuitBooleanResult"/>
+        <exclude name="SimplifyBooleanAssertion"/>
+        <exclude name="SystemPrintln"/>
+        <exclude name="UncommentedEmptyMethod"/>
+        <exclude name="UncommentedEmptyConstructor"/>
+        <exclude name="UnusedFormalParameter"/>
+        <exclude name="UnusedImports"/>
+        <exclude name="UnusedPrivateField"/>
+        <exclude name="UnusedPrivateMethod"/>
+        <exclude name="UseAssertEqualsInsteadOfAssertTrue"/>
+        <exclude name="UseAssertNullInsteadOfAssertEquals"/>
+        <exclude name="UseAssertSameInsteadOfAssertTrue"/>
+        <exclude name="UseAssertTrueInsteadOfAssertEquals"/>
+        <exclude name="UseCollectionIsEmpty"/>
+        <exclude name="UseVarargs"/>
+        <exclude name="WhileLoopWithLiteralBoolean"/>
+    </rule>
+
+    <!-- Code style: Only critical issues -->
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="AnnotationDeclarationsOnCompilation"/>
+        <exclude name="AvoidProtectedMethodInFinalClass"/>
+        <exclude name="AvoidStaticImport"/>
+        <exclude name="BooleanGetMethodName"/>
+        <exclude name="CallSuperInConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="ConfusingTernaryOperator"/>
+        <exclude name="ControlStatementBraces"/>
+        <exclude name="DefaultPackage"/>
+        <exclude name="DontImportJavaLang"/>
+        <exclude name="DuplicateImports"/>
+        <exclude name="EmptyCatchBlock"/>
+        <exclude name="EmptyWhileStmt"/>
+        <exclude name="ExtendsObject"/>
+        <exclude name="FieldDeclarationTrailingComma"/>
+        <exclude name="ForLoopShouldBeWhileLoop"/>
+        <exclude name="ForLoopsMustUseBraces"/>
+        <exclude name="GenericsNaming"/>
+        <exclude name="IfElseStmtsMustUseBraces"/>
+        <exclude name="IfStmtsMustUseBraces"/>
+        <exclude name="LinguisticNaming"/>
+        <exclude name="LocalHomeNamingConvention"/>
+        <exclude name="LocalInterfaceSessionNamingConvention"/>
+        <exclude name="LocalVariableNamingConvention"/>
+        <exclude name="LongVariable"/>
+        <exclude name="MethodArgumentCouldBeFinal"/>
+        <exclude name="MethodNamingConvention"/>
+        <exclude name="MisleadingVariableName"/>
+        <exclude name="MIsLeadingVariableName"/>
+        <exclude name="NoPackage"/>
+        <exclude name="OnlyOneReturn"/>
+        <exclude name="PackageCase"/>
+        <exclude name="PrematureDeclaration"/>
+        <exclude name="RedundantFieldInitializer"/>
+        <exclude name="RemoteInterfaceNamingConvention"/>
+        <exclude name="RemoteSessionInterfaceNamingConvention"/>
+        <exclude name="ShortClassName"/>
+        <exclude name="ShortMethodName"/>
+        <exclude name="ShortVariable"/>
+        <exclude name="SuspiciousConstantFieldName"/>
+        <exclude name="SuspiciousEqualsMethodName"/>
+        <exclude name="SuspiciousHashCodeMethodName"/>
+        <exclude name="TooManyStaticImports"/>
+        <exclude name="UnnecessaryAnnotationValueElement"/>
+        <exclude name="UnnecessaryConstructor"/>
+        <exclude name="UnnecessaryFullyQualifiedName"/>
+        <exclude name="UnnecessaryLocalBeforeReturn"/>
+        <exclude name="UnnecessaryModifier"/>
+        <exclude name="UnnecessaryPackageDeclaration"/>
+        <exclude name="UnnecessaryReturn"/>
+        <exclude name="UnusedImports"/>
+        <exclude name="UseDiamondOperator"/>
+        <exclude name="UseUnderscoresInNumericLiterals"/>
+        <exclude name="VariableNamingConventions"/>
+        <exclude name="WhileLoopsMustUseBraces"/>
+    </rule>
+
+    <!-- Design: Only critical issues -->
+    <rule ref="category/java/design.xml">
+        <exclude name="CyclomaticComplexity"/>
+        <exclude name="CollapsibleIfStatements"/>
+        <exclude name="ExcessiveImports"/>
+        <exclude name="ForLoopReplaceableByWhile"/>
+        <exclude name="TooManyFields"/>
+        <exclude name="TooManyMethods"/>
+        <exclude name="TooManyDependencies"/>
+        <exclude name="NcssCount"/>
+        <exclude name="NPathComplexity"/>
+        <exclude name="ExcessiveClassLength"/>
+        <exclude name="CouplingBetweenObjects"/>
+        <exclude name="LoosePackageCoupling"/>
+        <exclude name="DataClass"/>
+    </rule>
+
+</ruleset>
