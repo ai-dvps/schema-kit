@@ -27,6 +27,7 @@ import com.aidvps.druid.differ.internal.model.Table;
 import com.aidvps.druid.differ.internal.model.Warning;
 import com.aidvps.druid.differ.internal.parser.DatabaseDialectResolver;
 import com.aidvps.druid.differ.internal.parser.DruidParserAdapter;
+import java.util.List;
 
 /**
  * Main facade class for the SQL Table Differ.
@@ -86,8 +87,31 @@ public final class TableDiffer {
     public MigrationPlan generateMigration(
             String sourceSchema, String targetSchema, MigrationOptions options)
             throws SchemaParsingException, SchemaCompatibilityException, GenerationException {
-        TableDiffer differ = new TableDiffer(this.dialect, options);
-        return differ.generateMigration(sourceSchema, targetSchema);
+        // Parse schemas
+        Schema source = parserAdapter.parseSchema(sourceSchema);
+        Schema target = parserAdapter.parseSchema(targetSchema);
+
+        // Detect changes
+        SchemaDiff diff = changeDetector.compare(source, target);
+
+        // Generate warnings
+        List<Warning> warnings = generateWarnings(diff);
+
+        // Check if schemas are identical
+        if (diff.isEmpty()) {
+            return createEmptyMigrationPlan(source, target);
+        }
+
+        // Generate SQL statements based on dialect
+        List<String> statements = migrationGenerator.generate(diff);
+
+        return new MigrationPlan.Builder()
+                .sourceSchema(source)
+                .targetSchema(target)
+                .databaseDialect(dialect)
+                .addStatements(statements)
+                .addWarnings(warnings)
+                .build();
     }
 
     /** Creates an empty migration plan for schemas with no differences. */

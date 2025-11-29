@@ -14,6 +14,7 @@
 
 package com.aidvps.druid.differ.internal.parser;
 
+import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.druid.differ.exception.SchemaParsingException;
 import com.aidvps.druid.differ.internal.model.Schema;
 import com.aidvps.druid.sql.ast.statement.SQLCreateTableStatement;
@@ -54,7 +55,8 @@ public class DruidParserAdapter {
      */
     public Schema parseSchema(String sql) throws SchemaParsingException {
         if (sql == null || sql.trim().isEmpty()) {
-            throw new SchemaParsingException("SQL schema definition cannot be null or empty");
+            // Return empty schema for empty/null SQL
+            return Schema.builder(DatabaseDialect.MYSQL).build();
         }
 
         try {
@@ -65,10 +67,10 @@ public class DruidParserAdapter {
                 throw e;
             }
             throw new SchemaParsingException(
-                    "Failed to parse schema: " + e.getMessage(),
-                    extractLineNumber(sql, e),
-                    extractColumnNumber(sql, e),
-                    e);
+                "Failed to parse schema: " + e.getMessage(),
+                extractLineNumber(sql, e),
+                extractColumnNumber(sql, e),
+                e);
         }
     }
 
@@ -80,25 +82,86 @@ public class DruidParserAdapter {
      * @throws SchemaParsingException if parsing fails
      */
     private List<SQLCreateTableStatement> extractCreateTableStatements(String sql)
-            throws SchemaParsingException {
+        throws SchemaParsingException {
         List<SQLCreateTableStatement> statements = new ArrayList<>();
 
-        // For now, we expect a single CREATE TABLE statement
-        // In the future, this could be extended to parse multiple statements
-        SQLCreateTableParser parser = createParser(sql);
+        // Split SQL by semicolons to handle multiple CREATE TABLE statements
+        List<String> sqlParts = splitSqlBySemicolon(sql);
 
-        try {
-            SQLCreateTableStatement statement = parser.parseCreateTable();
-            if (statement == null) {
-                throw new SchemaParsingException("No CREATE TABLE statement found in SQL");
+        for (String sqlPart : sqlParts) {
+            String trimmedPart = sqlPart.trim();
+            if (trimmedPart.isEmpty()) {
+                continue;
             }
-            statements.add(statement);
-        } catch (Exception e) {
-            throw new SchemaParsingException(
+
+            // Check if this part contains a CREATE TABLE statement
+            if (!trimmedPart.toUpperCase().contains("CREATE TABLE")) {
+                throw new SchemaParsingException(
+                    "Expected CREATE TABLE statement but found: " + trimmedPart.substring(0, Math.min(50, trimmedPart.length())));
+            }
+
+            SQLCreateTableParser parser = createParser(trimmedPart);
+
+            try {
+                SQLCreateTableStatement statement = parser.parseCreateTable();
+                if (statement == null) {
+                    throw new SchemaParsingException("No CREATE TABLE statement found in SQL part");
+                }
+                statements.add(statement);
+            } catch (Exception e) {
+                throw new SchemaParsingException(
                     "Failed to parse CREATE TABLE statement: " + e.getMessage(), e);
+            }
+        }
+
+        if (statements.isEmpty()) {
+            throw new SchemaParsingException("No CREATE TABLE statement found in SQL");
         }
 
         return statements;
+    }
+
+    /**
+     * Splits SQL text by semicolons, handling quoted strings properly.
+     *
+     * @param sql the SQL text
+     * @return a list of SQL parts
+     */
+    private List<String> splitSqlBySemicolon(String sql) {
+        List<String> parts = new ArrayList<>();
+        StringBuilder currentPart = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+
+            // Track quotes to avoid splitting inside string literals
+            if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (c == '"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            }
+
+            // Split on semicolons outside quotes
+            if (c == ';' && !inSingleQuote && !inDoubleQuote) {
+                String part = currentPart.toString().trim();
+                if (!part.isEmpty()) {
+                    parts.add(part);
+                }
+                currentPart = new StringBuilder();
+            } else {
+                currentPart.append(c);
+            }
+        }
+
+        // Add the last part
+        String lastPart = currentPart.toString().trim();
+        if (!lastPart.isEmpty()) {
+            parts.add(lastPart);
+        }
+
+        return parts;
     }
 
     /**
@@ -124,7 +187,7 @@ public class DruidParserAdapter {
      * Extracts line number from exception if available.
      *
      * @param sql the original SQL
-     * @param e the exception
+     * @param e   the exception
      * @return the line number or -1 if not available
      */
     private int extractLineNumber(String sql, Exception e) {
@@ -146,7 +209,7 @@ public class DruidParserAdapter {
      * Extracts column number from exception if available.
      *
      * @param sql the original SQL
-     * @param e the exception
+     * @param e   the exception
      * @return the column number or -1 if not available
      */
     private int extractColumnNumber(String sql, Exception e) {

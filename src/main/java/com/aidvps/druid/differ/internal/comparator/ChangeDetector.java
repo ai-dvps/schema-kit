@@ -43,10 +43,6 @@ public class ChangeDetector {
      * @return a SchemaDiff object containing all detected changes
      */
     public SchemaDiff compare(Schema sourceSchema, Schema targetSchema) {
-        if (sourceSchema.equals(targetSchema)) {
-            return SchemaDiff.empty(sourceSchema);
-        }
-
         SchemaDiff.Builder diffBuilder = new SchemaDiff.Builder(sourceSchema, targetSchema);
 
         Set<String> sourceTableNames = sourceSchema.getTableNames();

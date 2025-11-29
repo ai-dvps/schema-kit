@@ -30,6 +30,7 @@ import com.aidvps.druid.sql.ast.expr.SQLPropertyExpr;
 import com.aidvps.druid.sql.ast.expr.SQLTextLiteralExpr;
 import com.aidvps.druid.sql.ast.statement.SQLColumnConstraint;
 import com.aidvps.druid.sql.ast.statement.SQLColumnDefinition;
+import com.aidvps.druid.sql.ast.statement.SQLColumnPrimaryKey;
 import com.aidvps.druid.sql.ast.statement.SQLConstraint;
 import com.aidvps.druid.sql.ast.statement.SQLCreateTableStatement;
 import com.aidvps.druid.sql.ast.statement.SQLForeignKeyConstraint;
@@ -85,8 +86,16 @@ class SchemaExtractor {
 
         for (SQLTableElement element : elements) {
             if (element instanceof SQLColumnDefinition) {
-                Column column = extractColumn((SQLColumnDefinition) element);
+                SQLColumnDefinition columnDef = (SQLColumnDefinition) element;
+                Column column = extractColumn(columnDef);
                 tableBuilder.addColumn(column);
+
+                // Extract any inline constraints (e.g., PRIMARY KEY) from the column
+                List<Constraint> inlineConstraints = extractInlineColumnConstraints(columnDef, tableName);
+                for (Constraint constraint : inlineConstraints) {
+                    String constraintName = constraint.getName().orElse("PRIMARY");
+                    tableBuilder.addConstraint(constraintName, constraint);
+                }
             } else if (element instanceof SQLConstraint) {
                 Constraint constraint = extractConstraint((SQLConstraint) element, tableName);
                 String constraintName = getConstraintName((SQLConstraint) element);
@@ -154,6 +163,47 @@ class SchemaExtractor {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Extracts inline constraints from a column definition.
+     *
+     * @param columnDef the column definition
+     * @param tableName the table name (for generating constraint names if needed)
+     * @return a list of extracted constraints (may be empty)
+     */
+    private List<Constraint> extractInlineColumnConstraints(SQLColumnDefinition columnDef, String tableName) {
+        List<Constraint> constraints = new ArrayList<>();
+        List<SQLColumnConstraint> columnConstraints = columnDef.getConstraints();
+
+        if (columnConstraints == null) {
+            return constraints;
+        }
+
+        for (SQLColumnConstraint constraint : columnConstraints) {
+            if (constraint instanceof SQLColumnPrimaryKey) {
+                // Extract PRIMARY KEY constraint from column
+                // SQLColumnPrimaryKey is a marker, so we use the column name directly
+                PrimaryKey primaryKey = extractColumnPrimaryKey(columnDef);
+                constraints.add(primaryKey);
+            }
+        }
+
+        return constraints;
+    }
+
+    /**
+     * Extracts a PrimaryKey constraint from a column definition.
+     *
+     * @param columnDef the column definition that has a PRIMARY KEY constraint
+     * @return a PrimaryKey object
+     */
+    private PrimaryKey extractColumnPrimaryKey(SQLColumnDefinition columnDef) {
+        List<String> columns = new ArrayList<>();
+        // For inline PRIMARY KEY, the column name is in the column definition itself
+        columns.add(columnDef.getColumnName());
+
+        return new PrimaryKey(null, columns);
     }
 
     /**

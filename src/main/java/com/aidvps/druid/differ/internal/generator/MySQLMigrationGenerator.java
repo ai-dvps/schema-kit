@@ -51,6 +51,11 @@ public class MySQLMigrationGenerator {
     public List<String> generate(SchemaDiff diff) {
         List<String> statements = new ArrayList<>();
 
+        // Check if there are any differences
+        if (diff.isEmpty()) {
+            return statements;
+        }
+
         if (includeComments) {
             statements.add("-- Migration from source to target schema");
             statements.add("-- Generated: " + java.time.LocalDateTime.now());
@@ -113,7 +118,9 @@ public class MySQLMigrationGenerator {
 
         if (!tableDiff.getRemovedColumns().isEmpty()
                 || !tableDiff.getModifiedColumns().isEmpty()
-                || !tableDiff.getAddedColumns().isEmpty()) {
+                || !tableDiff.getAddedColumns().isEmpty()
+                || !tableDiff.getRemovedConstraints().isEmpty()
+                || !tableDiff.getAddedConstraints().isEmpty()) {
             if (includeComments) {
                 statements.add("-- Modify table: " + tableName);
             }
@@ -133,6 +140,16 @@ public class MySQLMigrationGenerator {
                     tableDiff.getAddedColumns().stream()
                             .map(this::generateAddColumn)
                             .collect(java.util.stream.Collectors.toList()));
+
+            // Handle constraint changes
+            operations.addAll(
+                    tableDiff.getRemovedConstraints().stream()
+                            .map(this::generateDropConstraint)
+                            .collect(java.util.stream.Collectors.toList()));
+
+            for (Constraint constraint : tableDiff.getAddedConstraints()) {
+                operations.add(generateAddConstraint(constraint));
+            }
 
             if (!operations.isEmpty()) {
                 statements.add("ALTER TABLE " + tableName);
@@ -305,6 +322,21 @@ public class MySQLMigrationGenerator {
                         });
 
         return sb.toString();
+    }
+
+    /** Generates a DROP CONSTRAINT statement. */
+    private String generateDropConstraint(String constraintName) {
+        // In MySQL, PRIMARY KEY is dropped with ADD PRIMARY KEY syntax
+        if (constraintName.equals("PRIMARY")) {
+            return "DROP PRIMARY KEY";
+        }
+        // For other constraints, MySQL uses different syntax
+        return "DROP INDEX " + constraintName;
+    }
+
+    /** Generates an ADD CONSTRAINT statement. */
+    private String generateAddConstraint(Constraint constraint) {
+        return "ADD " + generateConstraint(constraint);
     }
 
     /** Escapes single quotes in comments. */
