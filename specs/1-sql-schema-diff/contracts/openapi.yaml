@@ -1,0 +1,409 @@
+openapi: 3.0.3
+info:
+  title: SQL Table Differ API
+  description: |
+    API for comparing database schemas and generating migration SQL.
+
+    This library enables automated comparison of database table structures across different
+    schema versions and generates database-specific migration SQL (ALTER, CREATE, DROP statements)
+    to transform one schema into another.
+
+    **Key Features:**
+    - Parse CREATE TABLE statements using druid-parser
+    - Compare schemas and detect differences
+    - Generate migration SQL for MySQL, PostgreSQL, and Oracle
+    - Validate dependency ordering and constraints
+    - Warn about destructive operations
+
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: /
+    description: In-process library (not a remote API)
+
+tags:
+  - name: migration
+    description: Schema migration operations
+
+paths:
+  /migration/generate:
+    post:
+      tags:
+        - migration
+      summary: Generate migration SQL from source to target schema
+      description: |
+        Analyzes source and target database schemas and generates the SQL statements
+        needed to transform the source schema into the target schema.
+
+        The generated SQL includes ALTER TABLE, CREATE TABLE, and DROP statements
+        with proper dependency ordering.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MigrationRequest'
+      responses:
+        '200':
+          description: Migration plan successfully generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationPlan'
+        '400':
+          description: Invalid input (malformed SQL, incompatible schemas)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error during migration generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /migration/rollback:
+    post:
+      tags:
+        - migration
+      summary: Generate rollback SQL for a migration plan
+      description: |
+        Generates the SQL statements needed to rollback a migration plan.
+        This essentially reverses the migration by transforming the target
+        schema back to the source schema.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - migrationPlan
+              properties:
+                migrationPlan:
+                  type: string
+                  description: Base64-encoded migration plan JSON
+                  format: byte
+      responses:
+        '200':
+          description: Rollback SQL successfully generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rollbackSql:
+                    type: string
+                    description: SQL statements to rollback the migration
+                  statements:
+                    type: array
+                    items:
+                      type: string
+                    description: Individual rollback SQL statements
+        '400':
+          description: Invalid migration plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    MigrationRequest:
+      type: object
+      required:
+        - sourceSchema
+        - targetSchema
+        - dialect
+      properties:
+        sourceSchema:
+          type: string
+          description: |
+            SQL CREATE TABLE statements representing the source schema.
+            Can be a single CREATE TABLE or multiple statements.
+          example: |
+            CREATE TABLE users (
+              id INT PRIMARY KEY,
+              name VARCHAR(255)
+            );
+        targetSchema:
+          type: string
+          description: |
+            SQL CREATE TABLE statements representing the target schema.
+            Can be a single CREATE TABLE or multiple statements.
+          example: |
+            CREATE TABLE users (
+              id INT PRIMARY KEY,
+              name VARCHAR(255),
+              email VARCHAR(255) NOT NULL
+            );
+        dialect:
+          type: string
+          enum: [MYSQL, POSTGRESQL, ORACLE]
+          description: Target database dialect for SQL generation
+        options:
+          $ref: '#/components/schemas/MigrationOptions'
+
+    MigrationOptions:
+      type: object
+      description: Options for migration generation
+      properties:
+        wrapInTransaction:
+          type: boolean
+          default: false
+          description: Wrap migration in a transaction if supported by dialect
+        includeComments:
+          type: boolean
+          default: true
+          description: Include explanatory comments in generated SQL
+        failOnDestructive:
+          type: boolean
+          default: false
+          description: Fail if destructive operations (DROP) are detected
+        includeRollback:
+          type: boolean
+          default: false
+          description: Include rollback SQL in the migration plan
+        transactionalDdl:
+          type: boolean
+          default: false
+          description: Use transactional DDL if supported (PostgreSQL)
+
+    MigrationPlan:
+      type: object
+      required:
+        - statements
+        - databaseDialect
+      properties:
+        statements:
+          type: array
+          description: Ordered list of SQL statements to execute
+          items:
+            type: string
+            example: ALTER TABLE users ADD COLUMN email VARCHAR(255);
+        databaseDialect:
+          type: string
+          enum: [MYSQL, POSTGRESQL, ORACLE]
+          description: Database dialect for the generated SQL
+        warnings:
+          type: array
+          description: Non-blocking warnings for the user
+          items:
+            $ref: '#/components/schemas/Warning'
+        destructiveOperations:
+          type: array
+          description: Operations that may cause data loss
+          items:
+            $ref: '#/components/schemas/DestructiveOperation'
+        sourceSchemaHash:
+          type: string
+          description: Hash of source schema for verification
+        targetSchemaHash:
+          type: string
+          description: Hash of target schema for verification
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when migration plan was generated
+
+    Warning:
+      type: object
+      required:
+        - type
+        - message
+      properties:
+        type:
+          type: string
+          enum:
+            - DEPRECATED_SYNTAX
+            - DATA_LOSS_RISK
+            - PERFORMANCE_NOTE
+            - COMPATIBILITY_WARNING
+          description: Type of warning
+        message:
+          type: string
+          description: Human-readable warning message
+        severity:
+          type: string
+          enum: [INFO, WARN, ERROR]
+          default: WARN
+          description: Warning severity level
+        statementIndex:
+          type: integer
+          description: Index of related SQL statement (if applicable)
+
+    DestructiveOperation:
+      type: object
+      required:
+        - operationType
+        - targetObject
+        - severity
+      properties:
+        operationType:
+          type: string
+          enum:
+            - DROP_TABLE
+            - DROP_COLUMN
+            - DROP_CONSTRAINT
+            - TRUNCATE_TABLE
+          description: Type of destructive operation
+        targetObject:
+          type: string
+          description: Object being destroyed (table name, column name, etc.)
+        sqlStatement:
+          type: string
+          description: The SQL statement that will be executed
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+          description: Severity of data loss risk
+        dataLossRisk:
+          type: boolean
+          description: Whether this operation will cause data loss
+        estimatedRowsAffected:
+          type: integer
+          description: Estimated number of rows that will be affected (if known)
+        confirmationRequired:
+          type: boolean
+          default: true
+          description: Whether user confirmation is required before execution
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+      properties:
+        errorCode:
+          type: string
+          enum:
+            - INVALID_SQL
+            - PARSE_ERROR
+            - INCOMPATIBLE_SCHEMAS
+            - CONSTRAINT_VIOLATION
+            - CIRCULAR_DEPENDENCY
+            - DIALECT_NOT_SUPPORTED
+            - GENERATION_FAILED
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: string
+          description: Additional error details (stack trace, context)
+        line:
+          type: integer
+          description: Line number where error occurred (if applicable)
+        column:
+          type: integer
+          description: Column number where error occurred (if applicable)
+
+    SchemaDiff:
+      type: object
+      description: Difference between two schemas
+      properties:
+        addedTables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableSummary'
+        removedTables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableSummary'
+        modifiedTables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableDiff'
+
+    TableSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Table name
+        columnCount:
+          type: integer
+          description: Number of columns in table
+        description:
+          type: string
+          description: Optional table description
+
+    TableDiff:
+      type: object
+      properties:
+        tableName:
+          type: string
+          description: Name of the modified table
+        addedColumns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnSummary'
+        removedColumns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnSummary'
+        modifiedColumns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnDiff'
+        addedConstraints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConstraintSummary'
+        removedConstraints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConstraintSummary'
+
+    ColumnSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        dataType:
+          type: string
+        nullable:
+          type: boolean
+        description:
+          type: string
+
+    ColumnDiff:
+      type: object
+      properties:
+        columnName:
+          type: string
+        oldValue:
+          type: object
+        newValue:
+          type: object
+        changes:
+          type: array
+          items:
+            type: string
+            enum:
+              - DATA_TYPE_CHANGED
+              - NULLABILITY_CHANGED
+              - DEFAULT_VALUE_CHANGED
+              - AUTO_INCREMENT_CHANGED
+              - CHARACTER_SET_CHANGED
+              - COLLATION_CHANGED
+              - COMMENT_CHANGED
+
+    ConstraintSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [PRIMARY_KEY, FOREIGN_KEY, UNIQUE, CHECK, NOT_NULL]
+        columns:
+          type: array
+          items:
+            type: string

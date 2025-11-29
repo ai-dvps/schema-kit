@@ -1,0 +1,189 @@
+/*
+ * SQL Table Differ - Gradle Build Configuration
+ * Version: 1.0.0
+ * Java: 8+
+ */
+
+plugins {
+    id 'java'
+    id 'checkstyle'
+    id 'com.diffplug.spotless' version '6.20.0'
+    id 'io.spring.dependency-management' version '1.1.4' apply false
+    id 'org.barfuin.gradle.jacob' version '1.0.0' apply false
+}
+
+// Project metadata
+group 'com.aidvps'
+version '1.0.0'
+description 'SQL Table Differ - Automated database schema comparison and migration SQL generation'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+// Repositories
+repositories {
+    // Check local Maven repository first for SNAPSHOT dependencies
+    mavenLocal()
+    // Fall back to central repository
+    mavenCentral()
+}
+
+// Dependencies
+dependencies {
+    // Druid Parser
+    implementation 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
+
+    // JUnit 5 for testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+
+    // Mockito for unit testing
+    testImplementation 'org.mockito:mockito-core:5.7.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
+
+    // JMH for performance benchmarks
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.36'
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.36'
+
+    // Testcontainers for integration testing
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
+    testImplementation 'org.testcontainers:mysql:1.19.0'
+    testImplementation 'org.testcontainers:postgresql:1.19.0'
+
+    // Test utilities
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+}
+
+// Test configuration
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = true
+    }
+    finalizedBy jacocoTestReport
+}
+
+// JMH Benchmark configuration
+jmh {
+    fork = 1
+    threads = 1
+    warmupIterations = 3
+    iterations = 5
+    timeUnit = 'ms'
+    benchmarkMode = ['avgt']
+    include = ['.*']
+}
+
+// Checkstyle configuration
+checkstyle {
+    toolVersion '10.12.4'
+    configFile file("${projectDir}/config/checkstyle/checkstyle.xml")
+    ignoreFailures = false
+}
+
+// Spotless configuration
+spotless {
+    java {
+        googleJavaFormat('1.17.0')
+        licenseHeaderFile(file('config/copyright/copyright-header.txt'))
+        removeUnusedImports()
+        importOrder()
+    }
+    format 'misc', {
+        editorConfigExclude '**/.git/**'
+    }
+    checkFormat
+}
+
+// JaCoCo configuration (code coverage)
+jacoco {
+    toolVersion = '0.8.11'
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        csv.required = true
+        html.required = true
+    }
+}
+
+// Build tasks
+tasks.named('check') {
+    dependsOn spotlessCheck
+    dependsOn checkstyleMain
+    dependsOn checkstyleTest
+}
+
+// Spotless apply task
+tasks.named('spotlessApply') {
+    doLast {
+        println "Applied Spotless formatting to all source files"
+    }
+}
+
+// Custom tasks
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+// Dependency locking (optional)
+dependencyLocking {
+    lockAllConfigurations()
+    buildNeedsDependencies()
+}
+
+// Task for checking dependencies
+task checkDependencies {
+    doLast {
+        println "Checking project dependencies..."
+        configurations.implementation.resolvedConfiguration.lenientConfiguration.allModuleVersions.collect { "${it.module.name}:${it.module.version}" }.sort().each {
+            println it
+        }
+    }
+}
+
+// Clean task enhancement
+clean {
+    delete 'out/'
+    delete 'build/reports/'
+    delete 'build/test-results/'
+}
+
+// IDE integration
+idea {
+    module {
+        sourceDirs += file('src/main/java')
+        testSourceDirs += file('src/test/java')
+        resourceDirs += file('src/main/resources')
+        testResourceDirs += file('src/test/resources')
+    }
+}
+
+eclipse {
+    classpath {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+// Performance profiling (optional)
+if (project.hasProperty('profile')) {
+    applicationDefaultJvmArgs = ['-Xmx2g', '-XX:+UnlockDiagnosticVMOptions', '-XX:+LogCompilation', '-XX:LogFile=build/ hotspot.log']
+}
