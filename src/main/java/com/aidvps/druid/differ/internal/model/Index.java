@@ -120,16 +120,16 @@ public final class Index {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Index index = (Index) o;
+        // Only compare essential identifying properties to avoid deep recursion
         return unique == index.unique
                 && Objects.equals(name, index.name)
-                && columns.equals(index.columns)
-                && Objects.equals(type, index.type)
-                && Objects.equals(options, index.options);
+                && Objects.equals(type, index.type);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, columns, unique, type, options);
+        // Only use essential properties for hashing
+        return Objects.hash(name, unique, type);
     }
 
     @Override

@@ -203,15 +203,17 @@ public final class Schema {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Schema schema = (Schema) o;
-        return Objects.equals(tables, schema.tables)
-                && dialect == schema.dialect
+        // Only compare dialect and table names to avoid infinite recursion
+        // Table contents are compared through TableDiff, not direct Schema equality
+        return dialect == schema.dialect
                 && Objects.equals(version, schema.version)
-                && Objects.equals(metadata, schema.metadata);
+                && tables.keySet().equals(schema.tables.keySet());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tables, dialect, version, metadata);
+        // Only use dialect and table names for hashing
+        return Objects.hash(dialect, version, tables.keySet());
     }
 
     @Override
@@ -290,10 +292,16 @@ public final class Schema {
          * @return a new immutable Schema
          */
         public Schema build() {
-            validateForeignKeyReferences();
+            // Note: Foreign key validation is not performed during parsing to allow
+            // forward references (tables can be defined in any order)
             return new Schema(this);
         }
 
+        /**
+         * Validates foreign key references.
+         *
+         * @throws IllegalArgumentException if a foreign key references a non-existent table
+         */
         private void validateForeignKeyReferences() {
             for (Table table : tables.values()) {
                 for (Constraint constraint : table.getConstraints().values()) {

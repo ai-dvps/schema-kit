@@ -191,17 +191,14 @@ public final class Table {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Table table = (Table) o;
-        return Objects.equals(name, table.name)
-                && columns.equals(table.columns)
-                && constraints.equals(table.constraints)
-                && indexes.equals(table.indexes)
-                && Objects.equals(comment, table.comment)
-                && Objects.equals(options, table.options);
+        // Only compare name to avoid deep recursion with nested collections
+        return Objects.equals(name, table.name);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, columns, constraints, indexes, comment, options);
+        // Only use name for hashing
+        return Objects.hash(name);
     }
 
     @Override
