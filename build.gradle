@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'com.diffplug.spotless' version '6.21.0'
     id 'jacoco'
+    id 'me.champeau.jmh' version '0.7.2'
 }
 
 group = 'com.aidvps.schemakit'
@@ -27,6 +28,12 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql:1.19.2'
     testImplementation 'org.testcontainers:oracle-xe:1.19.2'
     testImplementation 'org.testcontainers:mssqlserver:1.19.2'
+
+    // HikariCP for DataSource creation
+    testImplementation 'com.zaxxer:HikariCP:5.0.1'
+
+    // JMH benchmarks need access to main dependencies
+    jmh 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
 }
 
 test {
@@ -41,13 +48,25 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-//spotless {
-//    java {
-//        googleJavaFormat('1.17.0').aosp()
-//        formatAnnotations()
-//        importOrder()
-//        removeUnusedImports()
-//        cleanthat()
-//        lineEndings 'UNIX'
-//    }
-//}
+spotless {
+    java {
+        googleJavaFormat('1.17.0').aosp()
+        formatAnnotations()
+        importOrder()
+        removeUnusedImports()
+        cleanthat()
+        lineEndings 'UNIX'
+    }
+}
+
+// JMH Benchmark Configuration
+jmh {
+    jmhVersion = '1.37'
+    includeTests = false
+    duplicateClassesStrategy = DuplicatesStrategy.WARN
+    fork = 1
+    warmupIterations = 3
+    iterations = 5
+    timeUnit = 'ms'
+    resultFormat = 'JSON'
+}

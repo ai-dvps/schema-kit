@@ -36,7 +36,11 @@
       "Bash(tree:*)",
       "Bash(jar:*)",
       "Bash(javap -cp ~/.m2/repository/com/aidvps/druid-parser/1.2.28-SNAPSHOT/druid-parser-1.2.28-SNAPSHOT.jar:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(for file in build/test-results/test/*.xml)",
+      "Bash(if:*)",
+      "Bash(then:*)",
+      "Bash(else echo:*)"
     ],
     "deny": [],
     "ask": []
