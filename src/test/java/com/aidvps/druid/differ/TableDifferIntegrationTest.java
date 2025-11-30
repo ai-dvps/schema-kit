@@ -16,9 +16,9 @@ package com.aidvps.druid.differ;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.aidvps.druid.differ.exception.SchemaParsingException;
-import com.aidvps.druid.differ.exception.SchemaCompatibilityException;
 import com.aidvps.druid.differ.exception.GenerationException;
+import com.aidvps.druid.differ.exception.SchemaCompatibilityException;
+import com.aidvps.druid.differ.exception.SchemaParsingException;
 import com.aidvps.druid.differ.internal.model.MigrationPlan;
 import com.aidvps.druid.differ.internal.model.Warning;
 import java.util.List;
@@ -116,7 +116,8 @@ public class TableDifferIntegrationTest {
     }
 
     @Test
-    void testEndToEndCreateNewTable() throws SchemaParsingException, SchemaCompatibilityException, GenerationException {
+    void testEndToEndCreateNewTable()
+            throws SchemaParsingException, SchemaCompatibilityException, GenerationException {
         String sourceSchema = "";
 
         String targetSchema =

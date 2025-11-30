@@ -314,8 +314,12 @@ public class SchemaComparatorTest {
         assertTrue(tableDiff.getRemovedColumns().contains("email"));
 
         // Phone and address added
-        assertTrue(tableDiff.getAddedColumns().stream().anyMatch(col -> col.getName().equals("phone")));
-        assertTrue(tableDiff.getAddedColumns().stream().anyMatch(col -> col.getName().equals("address")));
+        assertTrue(
+                tableDiff.getAddedColumns().stream()
+                        .anyMatch(col -> col.getName().equals("phone")));
+        assertTrue(
+                tableDiff.getAddedColumns().stream()
+                        .anyMatch(col -> col.getName().equals("address")));
     }
 
     @Test

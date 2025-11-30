@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.aidvps.druid.differ.exception.SchemaParsingException;
 import com.aidvps.druid.differ.internal.comparator.ChangeDetector;
 import com.aidvps.druid.differ.internal.model.SchemaDiff;
-import com.aidvps.druid.differ.internal.model.TableDiff;
 import com.aidvps.druid.differ.internal.parser.DruidParserAdapter;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
