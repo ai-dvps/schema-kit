@@ -16,6 +16,7 @@ package com.aidvps.druid.differ.internal.generator;
 
 import com.aidvps.druid.differ.internal.model.Column;
 import com.aidvps.druid.differ.internal.model.ColumnDiff;
+import com.aidvps.druid.differ.internal.model.Index;
 import com.aidvps.druid.differ.internal.model.SchemaDiff;
 import com.aidvps.druid.differ.internal.model.Table;
 import com.aidvps.druid.differ.internal.model.TableDiff;
@@ -29,9 +30,22 @@ import java.util.List;
  * <p>This class converts SchemaDiff objects into MySQL-compatible ALTER TABLE and CREATE TABLE
  * statements that can transform a source schema into a target schema.
  */
-public class MySQLMigrationGenerator {
+public class MySQLMigrationGenerator implements MigrationGenerator {
 
     private final boolean includeComments;
+
+    // Performance optimization: Template strings for common operations
+    private static final String TEMPLATE_DROP_TABLE = "DROP TABLE %s;";
+    private static final String TEMPLATE_CREATE_TABLE_HEADER = "CREATE TABLE %s (";
+    private static final String TEMPLATE_ALTER_TABLE_HEADER = "ALTER TABLE %s";
+    private static final String TEMPLATE_ADD_COLUMN = "ADD COLUMN %s";
+    private static final String TEMPLATE_DROP_COLUMN = "DROP COLUMN %s";
+    private static final String TEMPLATE_MODIFY_COLUMN = "MODIFY COLUMN %s";
+    private static final String TEMPLATE_CREATE_INDEX = "CREATE %sINDEX %sON %s (%s)";
+    private static final String TEMPLATE_DROP_INDEX = "DROP INDEX %s";
+
+    // Pre-allocated StringBuilder for performance
+    private static final int DEFAULT_STRING_BUILDER_SIZE = 1024;
 
     /**
      * Creates a new MySQLMigrationGenerator.
@@ -49,7 +63,8 @@ public class MySQLMigrationGenerator {
      * @return a list of SQL statements
      */
     public List<String> generate(SchemaDiff diff) {
-        List<String> statements = new ArrayList<>();
+        // Performance optimization: Pre-allocate with estimated capacity
+        List<String> statements = new ArrayList<>(estimateCapacity(diff));
 
         // Check if there are any differences
         if (diff.isEmpty()) {
@@ -70,15 +85,36 @@ public class MySQLMigrationGenerator {
         return statements;
     }
 
+    /**
+     * Estimates the capacity needed for the statements list based on diff size. This helps avoid
+     * repeated array resizing.
+     */
+    private int estimateCapacity(SchemaDiff diff) {
+        int count = 0;
+        // Count removed tables (1 statement each + blank line)
+        count += diff.getRemovedTables().size() * 2;
+        // Count added tables (1 statement each + blank line)
+        count += diff.getAddedTables().size() * 2;
+        // Count modified tables (estimate 3 statements each + blank lines)
+        count += diff.getModifiedTables().size() * 4;
+        // Add space for comments
+        count += includeComments ? 4 : 0;
+        return Math.max(count, 10); // Minimum capacity
+    }
+
     /** Generates statements for removed tables. */
     private List<String> generateRemovedTables(SchemaDiff diff) {
-        List<String> statements = new ArrayList<>();
+        // Performance optimization: Pre-allocate with estimated capacity
+        List<String> statements = new ArrayList<>(diff.getRemovedTables().size() * 2);
 
         for (Table table : diff.getRemovedTables().values()) {
             if (includeComments) {
                 statements.add("-- Drop table: " + table.getName());
             }
-            statements.add("DROP TABLE " + table.getName() + ";");
+            // Performance optimization: Use template with StringBuilder
+            StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+            sb.append(String.format(TEMPLATE_DROP_TABLE, table.getName()));
+            statements.add(sb.toString());
             statements.add("");
         }
 
@@ -87,7 +123,8 @@ public class MySQLMigrationGenerator {
 
     /** Generates statements for added tables. */
     private List<String> generateAddedTables(SchemaDiff diff) {
-        List<String> statements = new ArrayList<>();
+        // Performance optimization: Pre-allocate with estimated capacity
+        List<String> statements = new ArrayList<>(diff.getAddedTables().size() * 2);
 
         for (Table table : diff.getAddedTables().values()) {
             if (includeComments) {
@@ -102,7 +139,8 @@ public class MySQLMigrationGenerator {
 
     /** Generates statements for modified tables. */
     private List<String> generateModifiedTables(SchemaDiff diff) {
-        List<String> statements = new ArrayList<>();
+        // Performance optimization: Pre-allocate with estimated capacity
+        List<String> statements = new ArrayList<>(diff.getModifiedTables().size() * 4);
 
         for (TableDiff tableDiff : diff.getModifiedTables().values()) {
             statements.addAll(generateModifiedTable(tableDiff));
@@ -113,9 +151,11 @@ public class MySQLMigrationGenerator {
 
     /** Generates statements for a single modified table. */
     private List<String> generateModifiedTable(TableDiff tableDiff) {
-        List<String> statements = new ArrayList<>();
+        // Performance optimization: Pre-allocate with estimated capacity
+        List<String> statements = new ArrayList<>(8);
         String tableName = tableDiff.getTableName();
 
+        // Handle column and constraint changes first
         if (!tableDiff.getRemovedColumns().isEmpty()
                 || !tableDiff.getModifiedColumns().isEmpty()
                 || !tableDiff.getAddedColumns().isEmpty()
@@ -125,7 +165,14 @@ public class MySQLMigrationGenerator {
                 statements.add("-- Modify table: " + tableName);
             }
 
-            List<String> operations = new ArrayList<>();
+            // Performance optimization: Pre-allocate operations list
+            List<String> operations =
+                    new ArrayList<>(
+                            tableDiff.getRemovedColumns().size()
+                                    + tableDiff.getModifiedColumns().size()
+                                    + tableDiff.getAddedColumns().size()
+                                    + tableDiff.getRemovedConstraints().size()
+                                    + tableDiff.getAddedConstraints().size());
 
             operations.addAll(
                     tableDiff.getRemovedColumns().stream()
@@ -152,8 +199,41 @@ public class MySQLMigrationGenerator {
             }
 
             if (!operations.isEmpty()) {
-                statements.add("ALTER TABLE " + tableName);
-                statements.add("    " + String.join(",\n    ", operations) + ";");
+                // Performance optimization: Use template with StringBuilder
+                StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+                sb.append(String.format(TEMPLATE_ALTER_TABLE_HEADER, tableName));
+                sb.append("\n    ");
+                sb.append(String.join(",\n    ", operations));
+                sb.append(";");
+                statements.add(sb.toString());
+            }
+            statements.add("");
+        }
+
+        // Handle index changes separately (MySQL specific)
+        if (!tableDiff.getRemovedIndexes().isEmpty()) {
+            if (includeComments) {
+                statements.add("-- Drop indexes from table: " + tableName);
+            }
+            for (String indexName : tableDiff.getRemovedIndexes()) {
+                // Performance optimization: Use template with StringBuilder
+                StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+                sb.append("ALTER TABLE ")
+                        .append(tableName)
+                        .append(" DROP INDEX ")
+                        .append(indexName)
+                        .append(";");
+                statements.add(sb.toString());
+            }
+            statements.add("");
+        }
+
+        if (!tableDiff.getAddedIndexes().isEmpty()) {
+            if (includeComments) {
+                statements.add("-- Add indexes to table: " + tableName);
+            }
+            for (Index index : tableDiff.getAddedIndexes()) {
+                statements.add(generateAddIndex(tableName, index));
             }
             statements.add("");
         }
@@ -163,10 +243,14 @@ public class MySQLMigrationGenerator {
 
     /** Generates a CREATE TABLE statement. */
     private String generateCreateTable(Table table) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("CREATE TABLE ").append(table.getName()).append(" (\n");
+        // Performance optimization: Pre-allocate StringBuilder
+        StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+        sb.append(String.format(TEMPLATE_CREATE_TABLE_HEADER, table.getName()));
+        sb.append("\n");
 
-        List<String> columnDefs = new ArrayList<>();
+        // Performance optimization: Pre-allocate columnDefs list
+        List<String> columnDefs =
+                new ArrayList<>(table.getColumns().size() + table.getConstraints().size());
         for (Column column : table.getColumns()) {
             columnDefs.add(generateColumnDefinition(column));
         }
@@ -190,7 +274,8 @@ public class MySQLMigrationGenerator {
 
     /** Generates a column definition. */
     private String generateColumnDefinition(Column column) {
-        StringBuilder sb = new StringBuilder();
+        // Performance optimization: Pre-allocate StringBuilder
+        StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
         sb.append(column.getName()).append(" ").append(column.getDataType());
 
         column.getLength().ifPresent(length -> sb.append("(").append(length).append(")"));
@@ -275,7 +360,11 @@ public class MySQLMigrationGenerator {
 
     /** Generates an ADD COLUMN statement. */
     private String generateAddColumn(Column column) {
-        return "ADD COLUMN " + generateColumnDefinition(column);
+        // Performance optimization: Use template with StringBuilder
+        StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+        sb.append("ADD COLUMN ");
+        sb.append(generateColumnDefinition(column));
+        return sb.toString();
     }
 
     /** Generates a MODIFY COLUMN statement for a column change. */
@@ -283,7 +372,8 @@ public class MySQLMigrationGenerator {
         Column oldColumn = columnDiff.getOldColumn();
         Column newColumn = columnDiff.getNewColumn();
 
-        StringBuilder sb = new StringBuilder();
+        // Performance optimization: Pre-allocate StringBuilder
+        StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
         sb.append("MODIFY COLUMN ").append(newColumn.getName()).append(" ");
 
         sb.append(newColumn.getDataType());
@@ -336,7 +426,37 @@ public class MySQLMigrationGenerator {
 
     /** Generates an ADD CONSTRAINT statement. */
     private String generateAddConstraint(Constraint constraint) {
-        return "ADD " + generateConstraint(constraint);
+        // Performance optimization: Use template with StringBuilder
+        StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+        sb.append("ADD ");
+        sb.append(generateConstraint(constraint));
+        return sb.toString();
+    }
+
+    /** Generates a CREATE INDEX statement. */
+    private String generateAddIndex(String tableName, Index index) {
+        // Performance optimization: Pre-allocate StringBuilder
+        StringBuilder sb = new StringBuilder(DEFAULT_STRING_BUILDER_SIZE);
+        sb.append("CREATE ");
+
+        if (index.isUnique()) {
+            sb.append("UNIQUE ");
+        }
+
+        sb.append("INDEX ");
+        if (index.getName().isPresent()) {
+            sb.append(index.getName().get()).append(" ");
+        }
+        sb.append("ON ").append(tableName);
+        sb.append(" (").append(String.join(", ", index.getColumns())).append(")");
+
+        if (index.getType().isPresent()) {
+            sb.append(" USING ").append(index.getType().get());
+        }
+
+        sb.append(";");
+
+        return sb.toString();
     }
 
     /** Escapes single quotes in comments. */
