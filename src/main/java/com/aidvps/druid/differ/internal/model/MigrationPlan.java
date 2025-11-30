@@ -35,6 +35,7 @@ public final class MigrationPlan {
     private final List<DestructiveOperation> destructiveOperations;
     private final Schema sourceSchema;
     private final Schema targetSchema;
+    private final SchemaDiff schemaDiff;
     private final DatabaseDialect databaseDialect;
     private final Instant createdAt;
 
@@ -46,6 +47,7 @@ public final class MigrationPlan {
      * @param destructiveOperations operations that may cause data loss
      * @param sourceSchema the source schema
      * @param targetSchema the target schema
+     * @param schemaDiff the schema differences
      * @param databaseDialect the target database dialect
      */
     public MigrationPlan(
@@ -54,6 +56,7 @@ public final class MigrationPlan {
             List<DestructiveOperation> destructiveOperations,
             Schema sourceSchema,
             Schema targetSchema,
+            SchemaDiff schemaDiff,
             DatabaseDialect databaseDialect) {
         this.statements = Collections.unmodifiableList(new java.util.ArrayList<>(statements));
         this.warnings = Collections.unmodifiableList(new java.util.ArrayList<>(warnings));
@@ -61,6 +64,7 @@ public final class MigrationPlan {
                 Collections.unmodifiableList(new java.util.ArrayList<>(destructiveOperations));
         this.sourceSchema = Objects.requireNonNull(sourceSchema, "Source schema cannot be null");
         this.targetSchema = Objects.requireNonNull(targetSchema, "Target schema cannot be null");
+        this.schemaDiff = schemaDiff;
         this.databaseDialect =
                 Objects.requireNonNull(databaseDialect, "Database dialect cannot be null");
         this.createdAt = Instant.now();
@@ -109,6 +113,15 @@ public final class MigrationPlan {
      */
     public Schema getTargetSchema() {
         return targetSchema;
+    }
+
+    /**
+     * Returns the schema differences.
+     *
+     * @return the schema differences (may be null for empty plans)
+     */
+    public SchemaDiff getSchemaDiff() {
+        return schemaDiff;
     }
 
     /**
@@ -194,6 +207,31 @@ public final class MigrationPlan {
         sb.append("Warnings: ").append(warnings.size()).append("\n");
         sb.append("Destructive Operations: ").append(destructiveOperations.size()).append("\n");
 
+        if (schemaDiff != null) {
+            sb.append("\nChange Statistics:\n");
+            sb.append("  Tables Added: ").append(schemaDiff.getAddedTables().size()).append("\n");
+            sb.append("  Tables Removed: ")
+                    .append(schemaDiff.getRemovedTables().size())
+                    .append("\n");
+            sb.append("  Tables Modified: ")
+                    .append(schemaDiff.getModifiedTables().size())
+                    .append("\n");
+
+            int totalAddedCols = 0;
+            int totalRemovedCols = 0;
+            int totalModifiedCols = 0;
+
+            for (TableDiff tableDiff : schemaDiff.getModifiedTables().values()) {
+                totalAddedCols += tableDiff.getAddedColumns().size();
+                totalRemovedCols += tableDiff.getRemovedColumns().size();
+                totalModifiedCols += tableDiff.getModifiedColumns().size();
+            }
+
+            sb.append("  Columns Added: ").append(totalAddedCols).append("\n");
+            sb.append("  Columns Removed: ").append(totalRemovedCols).append("\n");
+            sb.append("  Columns Modified: ").append(totalModifiedCols).append("\n");
+        }
+
         if (!destructiveOperations.isEmpty()) {
             sb.append("\nDestructive Operations Detected:\n");
             for (DestructiveOperation op : destructiveOperations) {
@@ -222,6 +260,173 @@ public final class MigrationPlan {
         return sb.toString();
     }
 
+    /**
+     * Returns a detailed change report with comprehensive statistics and impact analysis.
+     *
+     * @return a detailed change report
+     */
+    public String getChangeReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Detailed Migration Change Report ===\n\n");
+
+        // Basic information
+        sb.append("Migration Details:\n");
+        sb.append("  Source: ").append(sourceSchema.getDialect());
+        sourceSchema.getVersion().ifPresent(v -> sb.append(" v").append(v));
+        sb.append("\n");
+        sb.append("  Target: ").append(targetSchema.getDialect());
+        targetSchema.getVersion().ifPresent(v -> sb.append(" v").append(v));
+        sb.append("\n");
+        sb.append("  Database Dialect: ").append(databaseDialect).append("\n");
+        sb.append("  Created: ").append(createdAt).append("\n\n");
+
+        // Change statistics
+        if (schemaDiff != null) {
+            sb.append("Change Statistics:\n");
+            sb.append("  Schema Hash (Source): ").append(sourceSchema.computeHash()).append("\n");
+            sb.append("  Schema Hash (Target): ").append(targetSchema.computeHash()).append("\n");
+            sb.append("  Tables Changed: ")
+                    .append(
+                            schemaDiff.getAddedTables().size()
+                                    + schemaDiff.getRemovedTables().size()
+                                    + schemaDiff.getModifiedTables().size())
+                    .append("\n");
+            sb.append("    - Added: ").append(schemaDiff.getAddedTables().size()).append("\n");
+            sb.append("    - Removed: ").append(schemaDiff.getRemovedTables().size()).append("\n");
+            sb.append("    - Modified: ")
+                    .append(schemaDiff.getModifiedTables().size())
+                    .append("\n");
+
+            // Column statistics
+            int totalAddedCols = 0;
+            int totalRemovedCols = 0;
+            int totalModifiedCols = 0;
+
+            for (TableDiff tableDiff : schemaDiff.getModifiedTables().values()) {
+                totalAddedCols += tableDiff.getAddedColumns().size();
+                totalRemovedCols += tableDiff.getRemovedColumns().size();
+                totalModifiedCols += tableDiff.getModifiedColumns().size();
+            }
+
+            sb.append("  Columns Changed: ")
+                    .append(totalAddedCols + totalRemovedCols + totalModifiedCols)
+                    .append("\n");
+            sb.append("    - Added: ").append(totalAddedCols).append("\n");
+            sb.append("    - Removed: ").append(totalRemovedCols).append("\n");
+            sb.append("    - Modified: ").append(totalModifiedCols).append("\n\n");
+
+            // Severity classification
+            sb.append("Impact Analysis:\n");
+            int breakingChanges = 0;
+            int nonBreakingChanges = 0;
+
+            for (TableDiff tableDiff : schemaDiff.getModifiedTables().values()) {
+                if (!tableDiff.getRemovedColumns().isEmpty()
+                        || !tableDiff.getRemovedConstraints().isEmpty()
+                        || !tableDiff.getRemovedIndexes().isEmpty()) {
+                    breakingChanges++;
+                } else {
+                    nonBreakingChanges++;
+                }
+            }
+
+            breakingChanges += schemaDiff.getRemovedTables().size();
+            nonBreakingChanges += schemaDiff.getAddedTables().size();
+
+            sb.append("  Breaking Changes: ").append(breakingChanges).append("\n");
+            sb.append("  Non-Breaking Changes: ").append(nonBreakingChanges).append("\n");
+
+            // Risk assessment
+            sb.append("\nRisk Assessment:\n");
+            if (destructiveOperations.stream().anyMatch(op -> op.getSeverity() == Severity.HIGH)) {
+                sb.append(
+                        "  ⚠️  HIGH RISK: Destructive operations detected that may cause data loss\n");
+            }
+            if (!schemaDiff.getRemovedTables().isEmpty()) {
+                sb.append("  ⚠️  Tables will be dropped: ")
+                        .append(schemaDiff.getRemovedTables().size())
+                        .append("\n");
+            }
+            if (!schemaDiff.getRemovedTables().isEmpty() || totalRemovedCols > 0) {
+                sb.append("  ⚠️  Data loss risk: Columns/tables will be removed\n");
+            }
+            if (schemaDiff.getModifiedTables().size() > 0) {
+                sb.append("  ⚠️  Downtime risk: Table structure changes may require downtime\n");
+            }
+            if (statements.size() > 100) {
+                sb.append("  ⚠️  Large migration: ")
+                        .append(statements.size())
+                        .append(" statements\n");
+            }
+
+            sb.append("\nChange Details:\n");
+
+            // Added tables
+            if (!schemaDiff.getAddedTables().isEmpty()) {
+                sb.append("  New Tables (")
+                        .append(schemaDiff.getAddedTables().size())
+                        .append("):\n");
+                for (Table table : schemaDiff.getAddedTables().values()) {
+                    sb.append("    + ").append(table.getName()).append("\n");
+                }
+            }
+
+            // Removed tables
+            if (!schemaDiff.getRemovedTables().isEmpty()) {
+                sb.append("  Removed Tables (")
+                        .append(schemaDiff.getRemovedTables().size())
+                        .append("):\n");
+                for (Table table : schemaDiff.getRemovedTables().values()) {
+                    sb.append("    - ").append(table.getName()).append("\n");
+                }
+            }
+
+            // Modified tables
+            if (!schemaDiff.getModifiedTables().isEmpty()) {
+                sb.append("  Modified Tables (")
+                        .append(schemaDiff.getModifiedTables().size())
+                        .append("):\n");
+                for (TableDiff tableDiff : schemaDiff.getModifiedTables().values()) {
+                    sb.append("    ~ ").append(tableDiff.getTableName()).append("\n");
+                    sb.append(tableDiff.getSummary().replaceAll("(?m)^", "      "));
+                }
+            }
+        }
+
+        // Warnings and destructive operations
+        if (!warnings.isEmpty() || !destructiveOperations.isEmpty()) {
+            sb.append("\nAlerts:\n");
+
+            if (!destructiveOperations.isEmpty()) {
+                sb.append("  Destructive Operations (")
+                        .append(destructiveOperations.size())
+                        .append("):\n");
+                for (DestructiveOperation op : destructiveOperations) {
+                    sb.append("    ⚠️  [")
+                            .append(op.getSeverity())
+                            .append("] ")
+                            .append(op.getOperationType())
+                            .append(": ")
+                            .append(op.getTargetObject())
+                            .append("\n");
+                }
+            }
+
+            if (!warnings.isEmpty()) {
+                sb.append("  Warnings (").append(warnings.size()).append("):\n");
+                for (Warning warning : warnings) {
+                    sb.append("    ⚠️  [")
+                            .append(warning.getSeverity())
+                            .append("] ")
+                            .append(warning.getMessage())
+                            .append("\n");
+                }
+            }
+        }
+
+        return sb.toString();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -232,6 +437,7 @@ public final class MigrationPlan {
                 && destructiveOperations.equals(that.destructiveOperations)
                 && sourceSchema.equals(that.sourceSchema)
                 && targetSchema.equals(that.targetSchema)
+                && Objects.equals(schemaDiff, that.schemaDiff)
                 && databaseDialect == that.databaseDialect;
     }
 
@@ -243,6 +449,7 @@ public final class MigrationPlan {
                 destructiveOperations,
                 sourceSchema,
                 targetSchema,
+                schemaDiff,
                 databaseDialect);
     }
 
@@ -259,6 +466,7 @@ public final class MigrationPlan {
                 new java.util.ArrayList<>();
         private Schema sourceSchema;
         private Schema targetSchema;
+        private SchemaDiff schemaDiff;
         private DatabaseDialect databaseDialect;
 
         /**
@@ -280,6 +488,17 @@ public final class MigrationPlan {
          */
         public Builder targetSchema(Schema targetSchema) {
             this.targetSchema = targetSchema;
+            return this;
+        }
+
+        /**
+         * Sets the schema differences.
+         *
+         * @param schemaDiff the schema differences
+         * @return this Builder for chaining
+         */
+        public Builder schemaDiff(SchemaDiff schemaDiff) {
+            this.schemaDiff = schemaDiff;
             return this;
         }
 
@@ -372,6 +591,7 @@ public final class MigrationPlan {
                     destructiveOperations,
                     sourceSchema,
                     targetSchema,
+                    schemaDiff,
                     databaseDialect);
         }
     }

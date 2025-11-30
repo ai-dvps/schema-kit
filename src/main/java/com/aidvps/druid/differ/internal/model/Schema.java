@@ -16,6 +16,9 @@ package com.aidvps.druid.differ.internal.model;
 
 import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.druid.differ.internal.model.constraint.Constraint;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -147,6 +150,254 @@ public final class Schema {
      */
     public boolean hasTable(String tableName) {
         return tables.containsKey(tableName);
+    }
+
+    /**
+     * Computes a deterministic hash of the schema structure.
+     *
+     * <p>This hash is based on the complete schema structure including all tables, columns,
+     * constraints, and indexes. It can be used for quick drift detection and comparison.
+     *
+     * <p>The hash is computed using SHA-256 and is guaranteed to be deterministic - the same schema
+     * will always produce the same hash.
+     *
+     * @return a hexadecimal string representation of the schema hash
+     * @throws RuntimeException if the hash algorithm is not available (should never happen with
+     *     SHA-256)
+     */
+    public String computeHash() {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            updateHashWithSchema(digest);
+            byte[] hash = digest.digest();
+            return convertToHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
+    }
+
+    /**
+     * Computes a hash for this schema and compares it with another schema's hash.
+     *
+     * @param other the other schema to compare
+     * @return true if the schemas have the same hash (are structurally identical)
+     */
+    public boolean hasSameHash(Schema other) {
+        if (other == null) {
+            return false;
+        }
+        return this.computeHash().equals(other.computeHash());
+    }
+
+    /**
+     * Updates the hash digest with the schema structure.
+     *
+     * @param digest the message digest to update
+     */
+    private void updateHashWithSchema(MessageDigest digest) {
+        // Add dialect
+        digest.update(dialect.name().getBytes(StandardCharsets.UTF_8));
+
+        // Add version if present
+        if (version != null) {
+            digest.update("version:".getBytes(StandardCharsets.UTF_8));
+            digest.update(version.getBytes(StandardCharsets.UTF_8));
+        }
+
+        // Add tables in sorted order for deterministic hash
+        List<String> sortedTableNames =
+                tables.keySet().stream().sorted().collect(Collectors.toList());
+
+        for (String tableName : sortedTableNames) {
+            Table table = tables.get(tableName);
+            updateHashWithTable(digest, table);
+        }
+    }
+
+    /**
+     * Updates the hash digest with a table structure.
+     *
+     * @param digest the message digest to update
+     * @param table the table to hash
+     */
+    private void updateHashWithTable(MessageDigest digest, Table table) {
+        // Add table name
+        digest.update("table:".getBytes(StandardCharsets.UTF_8));
+        digest.update(table.getName().getBytes(StandardCharsets.UTF_8));
+
+        // Add comment if present
+        String comment = table.getComment().orElse(null);
+        if (comment != null) {
+            digest.update("comment:".getBytes(StandardCharsets.UTF_8));
+            digest.update(comment.getBytes(StandardCharsets.UTF_8));
+        }
+
+        // Add options in sorted order
+        List<String> sortedOptionKeys =
+                table.getOptions().keySet().stream().sorted().collect(Collectors.toList());
+        for (String key : sortedOptionKeys) {
+            digest.update("option:".getBytes(StandardCharsets.UTF_8));
+            digest.update(key.getBytes(StandardCharsets.UTF_8));
+            digest.update("=".getBytes(StandardCharsets.UTF_8));
+            digest.update(table.getOptions().get(key).getBytes(StandardCharsets.UTF_8));
+        }
+
+        // Add columns in definition order
+        for (Column column : table.getColumns()) {
+            updateHashWithColumn(digest, column);
+        }
+
+        // Add constraints in sorted order
+        List<String> sortedConstraintNames =
+                table.getConstraints().keySet().stream().sorted().collect(Collectors.toList());
+        for (String constraintName : sortedConstraintNames) {
+            Constraint constraint = table.getConstraints().get(constraintName);
+            updateHashWithConstraint(digest, constraint);
+        }
+
+        // Add indexes in definition order
+        for (Index index : table.getIndexes()) {
+            updateHashWithIndex(digest, index);
+        }
+    }
+
+    /**
+     * Updates the hash digest with a column structure.
+     *
+     * @param digest the message digest to update
+     * @param column the column to hash
+     */
+    private void updateHashWithColumn(MessageDigest digest, Column column) {
+        digest.update("column:".getBytes(StandardCharsets.UTF_8));
+        digest.update(column.getName().getBytes(StandardCharsets.UTF_8));
+        digest.update(":".getBytes(StandardCharsets.UTF_8));
+        digest.update(column.getDataType().getBytes(StandardCharsets.UTF_8));
+
+        if (column.getLength().isPresent()) {
+            digest.update("(".getBytes(StandardCharsets.UTF_8));
+            digest.update(column.getLength().get().toString().getBytes(StandardCharsets.UTF_8));
+            digest.update(")".getBytes(StandardCharsets.UTF_8));
+        }
+
+        if (column.getPrecision().isPresent()) {
+            digest.update("(".getBytes(StandardCharsets.UTF_8));
+            digest.update(column.getPrecision().get().toString().getBytes(StandardCharsets.UTF_8));
+            if (column.getScale().isPresent()) {
+                digest.update(",".getBytes(StandardCharsets.UTF_8));
+                digest.update(column.getScale().get().toString().getBytes(StandardCharsets.UTF_8));
+            }
+            digest.update(")".getBytes(StandardCharsets.UTF_8));
+        }
+
+        if (!column.isNullable()) {
+            digest.update(" NOT NULL".getBytes(StandardCharsets.UTF_8));
+        }
+
+        if (column.isAutoIncrement()) {
+            digest.update(" AUTO_INCREMENT".getBytes(StandardCharsets.UTF_8));
+        }
+
+        String defaultValue = column.getDefaultValue().orElse(null);
+        if (defaultValue != null) {
+            digest.update(" DEFAULT ".getBytes(StandardCharsets.UTF_8));
+            digest.update(defaultValue.getBytes(StandardCharsets.UTF_8));
+        }
+
+        String columnComment = column.getComment().orElse(null);
+        if (columnComment != null) {
+            digest.update(" COMMENT ".getBytes(StandardCharsets.UTF_8));
+            digest.update(columnComment.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Updates the hash digest with a constraint structure.
+     *
+     * @param digest the message digest to update
+     * @param constraint the constraint to hash
+     */
+    private void updateHashWithConstraint(MessageDigest digest, Constraint constraint) {
+        digest.update("constraint:".getBytes(StandardCharsets.UTF_8));
+        digest.update(constraint.getType().name().getBytes(StandardCharsets.UTF_8));
+
+        // Add constraint-specific details based on type
+        switch (constraint.getType()) {
+            case PRIMARY_KEY:
+                com.aidvps.druid.differ.internal.model.constraint.PrimaryKey pk =
+                        (com.aidvps.druid.differ.internal.model.constraint.PrimaryKey) constraint;
+                digest.update("(".getBytes(StandardCharsets.UTF_8));
+                digest.update(String.join(",", pk.getColumns()).getBytes(StandardCharsets.UTF_8));
+                digest.update(")".getBytes(StandardCharsets.UTF_8));
+                break;
+
+            case UNIQUE:
+                com.aidvps.druid.differ.internal.model.constraint.UniqueConstraint uc =
+                        (com.aidvps.druid.differ.internal.model.constraint.UniqueConstraint)
+                                constraint;
+                digest.update("(".getBytes(StandardCharsets.UTF_8));
+                digest.update(String.join(",", uc.getColumns()).getBytes(StandardCharsets.UTF_8));
+                digest.update(")".getBytes(StandardCharsets.UTF_8));
+                break;
+
+            case FOREIGN_KEY:
+                com.aidvps.druid.differ.internal.model.constraint.ForeignKey fk =
+                        (com.aidvps.druid.differ.internal.model.constraint.ForeignKey) constraint;
+                digest.update("(".getBytes(StandardCharsets.UTF_8));
+                digest.update(String.join(",", fk.getColumns()).getBytes(StandardCharsets.UTF_8));
+                digest.update(") REFERENCES ".getBytes(StandardCharsets.UTF_8));
+                digest.update(fk.getReferencedTable().getBytes(StandardCharsets.UTF_8));
+                digest.update("(".getBytes(StandardCharsets.UTF_8));
+                digest.update(
+                        String.join(",", fk.getReferencedColumns())
+                                .getBytes(StandardCharsets.UTF_8));
+                digest.update(")".getBytes(StandardCharsets.UTF_8));
+                break;
+
+            case CHECK:
+                com.aidvps.druid.differ.internal.model.constraint.CheckConstraint cc =
+                        (com.aidvps.druid.differ.internal.model.constraint.CheckConstraint)
+                                constraint;
+                digest.update("(".getBytes(StandardCharsets.UTF_8));
+                digest.update(cc.getExpression().getBytes(StandardCharsets.UTF_8));
+                digest.update(")".getBytes(StandardCharsets.UTF_8));
+                break;
+        }
+    }
+
+    /**
+     * Updates the hash digest with an index structure.
+     *
+     * @param digest the message digest to update
+     * @param index the index to hash
+     */
+    private void updateHashWithIndex(MessageDigest digest, Index index) {
+        digest.update("index:".getBytes(StandardCharsets.UTF_8));
+
+        if (index.getName().isPresent()) {
+            digest.update(index.getName().get().getBytes(StandardCharsets.UTF_8));
+        }
+
+        digest.update("(".getBytes(StandardCharsets.UTF_8));
+        digest.update(String.join(",", index.getColumns()).getBytes(StandardCharsets.UTF_8));
+        digest.update(")".getBytes(StandardCharsets.UTF_8));
+
+        if (index.isUnique()) {
+            digest.update(" UNIQUE".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Converts a byte array to a hexadecimal string.
+     *
+     * @param bytes the byte array
+     * @return the hexadecimal string
+     */
+    private String convertToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 
     /**

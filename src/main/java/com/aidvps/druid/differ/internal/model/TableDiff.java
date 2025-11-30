@@ -40,6 +40,11 @@ public final class TableDiff {
     private final List<String> removedConstraints;
     private final List<Index> addedIndexes;
     private final List<String> removedIndexes;
+    private final String oldComment;
+    private final String newComment;
+    private final Map<String, String> addedOptions;
+    private final Map<String, String> removedOptions;
+    private final Map<String, String> modifiedOptions;
 
     /**
      * Creates a new TableDiff.
@@ -54,6 +59,11 @@ public final class TableDiff {
      * @param removedConstraints constraint names that exist only in source
      * @param addedIndexes indexes that exist only in target
      * @param removedIndexes index names that exist only in source
+     * @param oldComment the previous table comment
+     * @param newComment the new table comment
+     * @param addedOptions table options added in target
+     * @param removedOptions table options removed from source
+     * @param modifiedOptions table options with changed values
      */
     public TableDiff(
             String tableName,
@@ -65,7 +75,12 @@ public final class TableDiff {
             List<Constraint> addedConstraints,
             List<String> removedConstraints,
             List<Index> addedIndexes,
-            List<String> removedIndexes) {
+            List<String> removedIndexes,
+            String oldComment,
+            String newComment,
+            Map<String, String> addedOptions,
+            Map<String, String> removedOptions,
+            Map<String, String> modifiedOptions) {
         this.tableName = Objects.requireNonNull(tableName, "Table name cannot be null");
         this.sourceTable = Objects.requireNonNull(sourceTable, "Source table cannot be null");
         this.targetTable = Objects.requireNonNull(targetTable, "Target table cannot be null");
@@ -81,6 +96,12 @@ public final class TableDiff {
         this.addedIndexes = Collections.unmodifiableList(new java.util.ArrayList<>(addedIndexes));
         this.removedIndexes =
                 Collections.unmodifiableList(new java.util.ArrayList<>(removedIndexes));
+        this.oldComment = oldComment;
+        this.newComment = newComment;
+        this.addedOptions = Collections.unmodifiableMap(new java.util.HashMap<>(addedOptions));
+        this.removedOptions = Collections.unmodifiableMap(new java.util.HashMap<>(removedOptions));
+        this.modifiedOptions =
+                Collections.unmodifiableMap(new java.util.HashMap<>(modifiedOptions));
     }
 
     /**
@@ -184,6 +205,51 @@ public final class TableDiff {
     }
 
     /**
+     * Returns the old table comment (from source table).
+     *
+     * @return the old comment, or null if not specified
+     */
+    public String getOldComment() {
+        return oldComment;
+    }
+
+    /**
+     * Returns the new table comment (from target table).
+     *
+     * @return the new comment, or null if not specified
+     */
+    public String getNewComment() {
+        return newComment;
+    }
+
+    /**
+     * Returns table options that exist only in the target table.
+     *
+     * @return an unmodifiable map of option names to values
+     */
+    public Map<String, String> getAddedOptions() {
+        return addedOptions;
+    }
+
+    /**
+     * Returns table options that exist only in the source table.
+     *
+     * @return an unmodifiable map of option names to values
+     */
+    public Map<String, String> getRemovedOptions() {
+        return removedOptions;
+    }
+
+    /**
+     * Returns table options that exist in both tables but have different values.
+     *
+     * @return an unmodifiable map of option names to new values
+     */
+    public Map<String, String> getModifiedOptions() {
+        return modifiedOptions;
+    }
+
+    /**
      * Returns whether the tables are identical.
      *
      * @return true if there are no differences, false otherwise
@@ -195,7 +261,11 @@ public final class TableDiff {
                 && addedConstraints.isEmpty()
                 && removedConstraints.isEmpty()
                 && addedIndexes.isEmpty()
-                && removedIndexes.isEmpty();
+                && removedIndexes.isEmpty()
+                && Objects.equals(oldComment, newComment)
+                && addedOptions.isEmpty()
+                && removedOptions.isEmpty()
+                && modifiedOptions.isEmpty();
     }
 
     /**
@@ -210,7 +280,11 @@ public final class TableDiff {
                 + addedConstraints.size()
                 + removedConstraints.size()
                 + addedIndexes.size()
-                + removedIndexes.size();
+                + removedIndexes.size()
+                + (Objects.equals(oldComment, newComment) ? 0 : 1)
+                + addedOptions.size()
+                + removedOptions.size()
+                + modifiedOptions.size();
     }
 
     /**
@@ -251,6 +325,64 @@ public final class TableDiff {
             removedConstraints.forEach(name -> sb.append("    - ").append(name).append("\n"));
         }
 
+        if (!addedIndexes.isEmpty() || !removedIndexes.isEmpty()) {
+            if (!addedIndexes.isEmpty()) {
+                sb.append("  Added Indexes (").append(addedIndexes.size()).append("):\n");
+                addedIndexes.forEach(
+                        idx ->
+                                sb.append("    + ")
+                                        .append(idx.getName().orElse("unnamed"))
+                                        .append("\n"));
+            }
+            if (!removedIndexes.isEmpty()) {
+                sb.append("  Removed Indexes (").append(removedIndexes.size()).append("):\n");
+                removedIndexes.forEach(name -> sb.append("    - ").append(name).append("\n"));
+            }
+        }
+
+        if (!Objects.equals(oldComment, newComment)) {
+            sb.append("  Comment Changed:\n");
+            sb.append("    Old: ").append(oldComment != null ? oldComment : "(null)").append("\n");
+            sb.append("    New: ").append(newComment != null ? newComment : "(null)").append("\n");
+        }
+
+        if (!addedOptions.isEmpty() || !removedOptions.isEmpty() || !modifiedOptions.isEmpty()) {
+            if (!addedOptions.isEmpty()) {
+                sb.append("  Added Options (").append(addedOptions.size()).append("):\n");
+                addedOptions.forEach(
+                        (key, value) ->
+                                sb.append("    + ")
+                                        .append(key)
+                                        .append("=")
+                                        .append(value)
+                                        .append("\n"));
+            }
+            if (!removedOptions.isEmpty()) {
+                sb.append("  Removed Options (").append(removedOptions.size()).append("):\n");
+                removedOptions.forEach(
+                        (key, value) ->
+                                sb.append("    - ")
+                                        .append(key)
+                                        .append("=")
+                                        .append(value)
+                                        .append("\n"));
+            }
+            if (!modifiedOptions.isEmpty()) {
+                sb.append("  Modified Options (").append(modifiedOptions.size()).append("):\n");
+                modifiedOptions.forEach(
+                        (key, value) -> {
+                            String oldValue = sourceTable.getOption(key).orElse("(null)");
+                            sb.append("    ~ ")
+                                    .append(key)
+                                    .append(": ")
+                                    .append(oldValue)
+                                    .append(" -> ")
+                                    .append(value)
+                                    .append("\n");
+                        });
+            }
+        }
+
         if (isEmpty()) {
             sb.append("  No differences found");
         }
@@ -272,7 +404,12 @@ public final class TableDiff {
                 && addedConstraints.equals(that.addedConstraints)
                 && removedConstraints.equals(that.removedConstraints)
                 && addedIndexes.equals(that.addedIndexes)
-                && removedIndexes.equals(that.removedIndexes);
+                && removedIndexes.equals(that.removedIndexes)
+                && Objects.equals(oldComment, that.oldComment)
+                && Objects.equals(newComment, that.newComment)
+                && addedOptions.equals(that.addedOptions)
+                && removedOptions.equals(that.removedOptions)
+                && modifiedOptions.equals(that.modifiedOptions);
     }
 
     @Override
@@ -287,7 +424,12 @@ public final class TableDiff {
                 addedConstraints,
                 removedConstraints,
                 addedIndexes,
-                removedIndexes);
+                removedIndexes,
+                oldComment,
+                newComment,
+                addedOptions,
+                removedOptions,
+                modifiedOptions);
     }
 
     @Override
@@ -307,6 +449,11 @@ public final class TableDiff {
         private final java.util.List<String> removedConstraints = new java.util.ArrayList<>();
         private final java.util.List<Index> addedIndexes = new java.util.ArrayList<>();
         private final java.util.List<String> removedIndexes = new java.util.ArrayList<>();
+        private String oldComment;
+        private String newComment;
+        private final java.util.Map<String, String> addedOptions = new java.util.HashMap<>();
+        private final java.util.Map<String, String> removedOptions = new java.util.HashMap<>();
+        private final java.util.Map<String, String> modifiedOptions = new java.util.HashMap<>();
 
         /**
          * Creates a new Builder.
@@ -400,6 +547,55 @@ public final class TableDiff {
         }
 
         /**
+         * Sets the table comment change.
+         *
+         * @param oldComment the old comment
+         * @param newComment the new comment
+         * @return this Builder for chaining
+         */
+        public Builder commentChanged(String oldComment, String newComment) {
+            this.oldComment = oldComment;
+            this.newComment = newComment;
+            return this;
+        }
+
+        /**
+         * Adds a table option that exists only in the target table.
+         *
+         * @param key the option key
+         * @param value the option value
+         * @return this Builder for chaining
+         */
+        public Builder addAddedOption(String key, String value) {
+            addedOptions.put(key, value);
+            return this;
+        }
+
+        /**
+         * Adds a table option that exists only in the source table.
+         *
+         * @param key the option key
+         * @param value the option value
+         * @return this Builder for chaining
+         */
+        public Builder addRemovedOption(String key, String value) {
+            removedOptions.put(key, value);
+            return this;
+        }
+
+        /**
+         * Adds a table option that exists in both tables but has a different value.
+         *
+         * @param key the option key
+         * @param newValue the new value
+         * @return this Builder for chaining
+         */
+        public Builder addModifiedOption(String key, String newValue) {
+            modifiedOptions.put(key, newValue);
+            return this;
+        }
+
+        /**
          * Builds the TableDiff.
          *
          * @return a new TableDiff
@@ -415,7 +611,12 @@ public final class TableDiff {
                     addedConstraints,
                     removedConstraints,
                     addedIndexes,
-                    removedIndexes);
+                    removedIndexes,
+                    oldComment,
+                    newComment,
+                    addedOptions,
+                    removedOptions,
+                    modifiedOptions);
         }
     }
 }
