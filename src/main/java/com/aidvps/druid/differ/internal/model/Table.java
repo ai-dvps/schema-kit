@@ -121,7 +121,7 @@ public final class Table {
      * @return an Optional containing the index if found, or empty
      */
     public Optional<Index> getIndex(String name) {
-        return indexes.stream().filter(i -> i.getName().equals(name)).findFirst();
+        return indexes.stream().filter(i -> i.getName().isPresent() && i.getName().get().equals(name)).findFirst();
     }
 
     /**

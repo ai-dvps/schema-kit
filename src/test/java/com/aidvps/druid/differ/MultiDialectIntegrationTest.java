@@ -32,6 +32,8 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -49,6 +51,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *   <li>Schema state is correct after migration execution
  * </ul>
  */
+@EnabledIf("com.aidvps.druid.differ.MultiDialectIntegrationTest#isDockerAvailable")
 @Testcontainers
 public class MultiDialectIntegrationTest {
 
@@ -480,6 +483,16 @@ public class MultiDialectIntegrationTest {
             }
         } catch (Exception e) {
             // Ignore cleanup errors
+        }
+    }
+
+    /** Checks if Docker is available for Testcontainers. */
+    private static boolean isDockerAvailable() {
+        try {
+            DockerClientFactory.instance().client();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

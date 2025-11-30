@@ -168,6 +168,20 @@ public class ChangeDetector {
             }
         }
 
+        // Check indexes
+        if (table1.getIndexes().size() != table2.getIndexes().size()) return false;
+
+        for (Index index1 : table1.getIndexes()) {
+            boolean found = false;
+            for (Index index2 : table2.getIndexes()) {
+                if (indexesAreEqual(index1, index2)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+
         return true;
     }
 
@@ -177,6 +191,17 @@ public class ChangeDetector {
                 && c1.getDataType().equals(c2.getDataType())
                 && c1.isNullable() == c2.isNullable()
                 && Objects.equals(c1.getDefaultValue(), c2.getDefaultValue());
+    }
+
+    /** Checks if two indexes are equal. */
+    private boolean indexesAreEqual(Index i1, Index i2) {
+        if (!i1.getName().equals(i2.getName())) return false;
+        if (i1.isUnique() != i2.isUnique()) return false;
+        if (i1.getColumns().size() != i2.getColumns().size()) return false;
+        for (int i = 0; i < i1.getColumns().size(); i++) {
+            if (!i1.getColumns().get(i).equals(i2.getColumns().get(i))) return false;
+        }
+        return true;
     }
 
     /**

@@ -204,7 +204,7 @@ public class PostgreSQLMigrationGenerator implements MigrationGenerator {
             }
             statements.add(
                     String.format(
-                            TEMPLATE_ALTER_TABLE_HEADER + " " + TEMPLATE_ADD_COLUMN + " %s;",
+                            TEMPLATE_ALTER_TABLE_HEADER + " " + TEMPLATE_ADD_COLUMN + ";",
                             tableName,
                             generateColumnDefinition(column)));
         }
