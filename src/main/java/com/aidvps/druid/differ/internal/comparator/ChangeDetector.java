@@ -23,6 +23,8 @@ import com.aidvps.druid.differ.internal.model.Table;
 import com.aidvps.druid.differ.internal.model.TableDiff;
 import com.aidvps.druid.differ.internal.model.constraint.Constraint;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,6 +47,12 @@ public class ChangeDetector {
     public SchemaDiff compare(Schema sourceSchema, Schema targetSchema) {
         SchemaDiff.Builder diffBuilder = new SchemaDiff.Builder(sourceSchema, targetSchema);
 
+        // Fast path: check if schemas have same hash and are likely identical
+        if (sourceSchema.hashCode() == targetSchema.hashCode()
+                && schemasAreDeeplyEqual(sourceSchema, targetSchema)) {
+            return diffBuilder.build(); // Return empty diff - schemas are identical
+        }
+
         Set<String> sourceTableNames = sourceSchema.getTableNames();
         Set<String> targetTableNames = targetSchema.getTableNames();
 
@@ -65,6 +73,7 @@ public class ChangeDetector {
             diffBuilder.addRemovedTable(tableName, sourceSchema.getTable(tableName).get());
         }
 
+        // Compare common tables
         for (String tableName : commonTables) {
             Table sourceTable = sourceSchema.getTable(tableName).get();
             Table targetTable = targetSchema.getTable(tableName).get();
@@ -76,6 +85,98 @@ public class ChangeDetector {
         }
 
         return diffBuilder.build();
+    }
+
+    /**
+     * Performs a deep equality check between two schemas. This is more thorough than
+     * Schema.equals() which only compares names.
+     *
+     * @param schema1 the first schema
+     * @param schema2 the second schema
+     * @return true if schemas are deeply equal
+     */
+    private boolean schemasAreDeeplyEqual(Schema schema1, Schema schema2) {
+        if (schema1 == schema2) return true;
+        if (schema1 == null || schema2 == null) return false;
+        if (schema1.getTables().size() != schema2.getTables().size()) return false;
+
+        // Check each table deeply
+        for (String tableName : schema1.getTableNames()) {
+            if (!schema2.getTable(tableName).isPresent()) return false;
+
+            Table table1 = schema1.getTable(tableName).get();
+            Table table2 = schema2.getTable(tableName).get();
+
+            if (!tablesAreDeeplyEqual(table1, table2)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Performs a deep equality check between two tables. This is more thorough than Table.equals()
+     * which only compares names.
+     *
+     * @param table1 the first table
+     * @param table2 the second table
+     * @return true if tables are deeply equal
+     */
+    private boolean tablesAreDeeplyEqual(Table table1, Table table2) {
+        if (table1 == table2) return true;
+        if (table1 == null || table2 == null) return false;
+
+        // Check columns
+        if (table1.getColumns().size() != table2.getColumns().size()) return false;
+
+        for (Column column1 : table1.getColumns()) {
+            boolean found = false;
+            for (Column column2 : table2.getColumns()) {
+                if (columnsAreEqual(column1, column2)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+
+        // Check constraints
+        if (table1.getConstraints().size() != table2.getConstraints().size()) return false;
+
+        for (String constraintName : table1.getConstraints().keySet()) {
+            if (!table2.getConstraints().containsKey(constraintName)) return false;
+            Constraint c1 = table1.getConstraints().get(constraintName);
+            Constraint c2 = table2.getConstraints().get(constraintName);
+            if (!c1.equals(c2)) return false;
+        }
+
+        // Check table comment
+        if (!equalsIgnoreCaseAndWhitespace(
+                table1.getComment().orElse(null), table2.getComment().orElse(null))) {
+            return false;
+        }
+
+        // Check table options
+        if (table1.getOptions().size() != table2.getOptions().size()) return false;
+
+        for (String key : table1.getOptions().keySet()) {
+            if (!table2.getOptions().containsKey(key)) return false;
+            if (!equalsIgnoreCaseAndWhitespace(
+                    table1.getOptions().get(key), table2.getOptions().get(key))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Checks if two columns are equal. */
+    private boolean columnsAreEqual(Column c1, Column c2) {
+        return c1.getName().equals(c2.getName())
+                && c1.getDataType().equals(c2.getDataType())
+                && c1.isNullable() == c2.isNullable()
+                && Objects.equals(c1.getDefaultValue(), c2.getDefaultValue());
     }
 
     /**
@@ -121,6 +222,7 @@ public class ChangeDetector {
 
         compareConstraints(tableName, sourceTable, targetTable, diffBuilder);
         compareIndexes(tableName, sourceTable, targetTable, diffBuilder);
+        compareTableProperties(tableName, sourceTable, targetTable, diffBuilder);
 
         return diffBuilder.build();
     }
@@ -140,9 +242,10 @@ public class ChangeDetector {
             diffBuilder.addChange(ColumnDiff.ChangeType.DATA_TYPE_CHANGED);
         }
 
-        if (!equalsIgnoreCaseAndWhitespace(
+        if (!areDefaultValuesSemanticallyEquivalent(
                 sourceColumn.getDefaultValue().orElse(null),
-                targetColumn.getDefaultValue().orElse(null))) {
+                targetColumn.getDefaultValue().orElse(null),
+                sourceColumn.getDataType())) {
             diffBuilder.addChange(ColumnDiff.ChangeType.DEFAULT_VALUE_CHANGED);
         }
 
@@ -255,6 +358,144 @@ public class ChangeDetector {
         for (String indexName : removedIndexes) {
             diffBuilder.addRemovedIndex(indexName);
         }
+    }
+
+    /** Compares table properties (comment, options) between two tables. */
+    private void compareTableProperties(
+            String tableName, Table sourceTable, Table targetTable, TableDiff.Builder diffBuilder) {
+        // Compare table comments
+        String sourceComment = sourceTable.getComment().orElse(null);
+        String targetComment = targetTable.getComment().orElse(null);
+
+        if (!equalsIgnoreCaseAndWhitespace(sourceComment, targetComment)) {
+            diffBuilder.commentChanged(sourceComment, targetComment);
+        }
+
+        // Compare table options (engine, tablespace, etc.)
+        Map<String, String> sourceOptions = sourceTable.getOptions();
+        Map<String, String> targetOptions = targetTable.getOptions();
+
+        // Find added options
+        for (Map.Entry<String, String> entry : targetOptions.entrySet()) {
+            String key = entry.getKey();
+            String targetValue = entry.getValue();
+
+            if (!sourceOptions.containsKey(key)) {
+                diffBuilder.addAddedOption(key, targetValue);
+            } else {
+                // Check if value changed
+                String sourceValue = sourceOptions.get(key);
+                if (!equalsIgnoreCaseAndWhitespace(sourceValue, targetValue)) {
+                    diffBuilder.addModifiedOption(key, targetValue);
+                }
+            }
+        }
+
+        // Find removed options
+        for (Map.Entry<String, String> entry : sourceOptions.entrySet()) {
+            String key = entry.getKey();
+            String sourceValue = entry.getValue();
+
+            if (!targetOptions.containsKey(key)) {
+                diffBuilder.addRemovedOption(key, sourceValue);
+            }
+        }
+    }
+
+    /**
+     * Checks if two default values are semantically equivalent.
+     *
+     * <p>This method performs semantic equivalence checking rather than exact string matching. For
+     * example: - NULL and null are equivalent - CURRENT_TIMESTAMP and CURRENT_TIMESTAMP() are
+     * equivalent (for timestamp types) - 0 and 0.0 are equivalent (for numeric types)
+     *
+     * @param default1 the first default value
+     * @param default2 the second default value
+     * @param dataType the column data type
+     * @return true if the defaults are semantically equivalent
+     */
+    private boolean areDefaultValuesSemanticallyEquivalent(
+            String default1, String default2, String dataType) {
+        // Both null
+        if (default1 == null && default2 == null) {
+            return true;
+        }
+
+        // One null, one not
+        if (default1 == null || default2 == null) {
+            return false;
+        }
+
+        // Normalize both values
+        String norm1 = normalizeDefaultValue(default1, dataType);
+        String norm2 = normalizeDefaultValue(default2, dataType);
+
+        return norm1.equals(norm2);
+    }
+
+    /**
+     * Normalizes a default value for semantic comparison.
+     *
+     * @param value the default value
+     * @param dataType the column data type
+     * @return the normalized value
+     */
+    private String normalizeDefaultValue(String value, String dataType) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = value.trim();
+
+        // Case-insensitive comparison for certain functions
+        String upper = normalized.toUpperCase();
+
+        // CURRENT_TIMESTAMP variations
+        if (upper.startsWith("CURRENT_TIMESTAMP")) {
+            return "CURRENT_TIMESTAMP";
+        }
+
+        // NULL variations
+        if (upper.equals("NULL")) {
+            return "NULL";
+        }
+
+        // Numeric values - normalize spacing
+        if (isNumericType(dataType)) {
+            return normalized.replaceAll("\\s+", "");
+        }
+
+        // String literals - remove extra quotes spacing
+        if (normalized.startsWith("'") && normalized.endsWith("'")) {
+            // Normalize escaping
+            return normalized.replace("''", "'");
+        }
+
+        return normalized;
+    }
+
+    /**
+     * Checks if a data type is numeric.
+     *
+     * @param dataType the data type
+     * @return true if numeric
+     */
+    private boolean isNumericType(String dataType) {
+        if (dataType == null) {
+            return false;
+        }
+        String upper = dataType.toUpperCase();
+        return upper.contains("INT")
+                || upper.contains("DECIMAL")
+                || upper.contains("NUMERIC")
+                || upper.contains("FLOAT")
+                || upper.contains("DOUBLE")
+                || upper.contains("REAL")
+                || upper.contains("BIGINT")
+                || upper.contains("SMALLINT")
+                || upper.contains("TINYINT")
+                || upper.contains("MEDIUMINT")
+                || upper.contains("NUMERIC");
     }
 
     /** Compares two strings for equality, ignoring case and whitespace. */

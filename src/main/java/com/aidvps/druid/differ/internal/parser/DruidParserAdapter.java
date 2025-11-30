@@ -16,12 +16,14 @@ package com.aidvps.druid.differ.internal.parser;
 
 import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.druid.differ.exception.SchemaParsingException;
+import com.aidvps.druid.differ.internal.cache.SchemaCache;
 import com.aidvps.druid.differ.internal.model.Schema;
 import com.aidvps.druid.sql.ast.statement.SQLCreateTableStatement;
 import com.aidvps.druid.sql.dialect.mysql.parser.MySqlCreateTableParser;
 import com.aidvps.druid.sql.dialect.oracle.parser.OracleCreateTableParser;
 import com.aidvps.druid.sql.dialect.postgresql.parser.PGCreateTableParser;
 import com.aidvps.druid.sql.parser.SQLCreateTableParser;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,8 @@ public class DruidParserAdapter {
 
     private final String dbType;
     private final SchemaExtractor schemaExtractor;
+    private final SchemaCache cache;
+    private final MessageDigest digest;
 
     /**
      * Creates a new DruidParserAdapter.
@@ -42,8 +46,24 @@ public class DruidParserAdapter {
      * @param dbType the database type (e.g., "mysql", "postgresql", "oracle")
      */
     public DruidParserAdapter(String dbType) {
+        this(dbType, 100); // Default cache size
+    }
+
+    /**
+     * Creates a new DruidParserAdapter with a custom cache size.
+     *
+     * @param dbType the database type (e.g., "mysql", "postgresql", "oracle")
+     * @param cacheSize the maximum number of schemas to cache
+     */
+    public DruidParserAdapter(String dbType, int cacheSize) {
         this.dbType = dbType;
         this.schemaExtractor = new SchemaExtractor();
+        this.cache = new SchemaCache(cacheSize);
+        try {
+            this.digest = MessageDigest.getInstance("SHA-256");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize SHA-256 digest", e);
+        }
     }
 
     /**
@@ -59,18 +79,33 @@ public class DruidParserAdapter {
             return Schema.builder(DatabaseDialect.MYSQL).build();
         }
 
+        // Compute hash for caching
+        String hash = computeHash(sql);
+
+        // Check cache first
+        Schema cached = cache.get(hash);
+        if (cached != null) {
+            return cached;
+        }
+
+        // Parse and cache
         try {
             List<SQLCreateTableStatement> tableStatements = extractCreateTableStatements(sql);
-            return schemaExtractor.extract(tableStatements, dbType);
+            Schema schema = schemaExtractor.extract(tableStatements, dbType);
+
+            // Store in cache
+            cache.put(hash, schema);
+
+            return schema;
         } catch (Exception e) {
             if (e instanceof SchemaParsingException) {
                 throw e;
             }
             throw new SchemaParsingException(
-                "Failed to parse schema: " + e.getMessage(),
-                extractLineNumber(sql, e),
-                extractColumnNumber(sql, e),
-                e);
+                    "Failed to parse schema: " + e.getMessage(),
+                    extractLineNumber(sql, e),
+                    extractColumnNumber(sql, e),
+                    e);
         }
     }
 
@@ -82,7 +117,7 @@ public class DruidParserAdapter {
      * @throws SchemaParsingException if parsing fails
      */
     private List<SQLCreateTableStatement> extractCreateTableStatements(String sql)
-        throws SchemaParsingException {
+            throws SchemaParsingException {
         List<SQLCreateTableStatement> statements = new ArrayList<>();
 
         // Split SQL by semicolons to handle multiple CREATE TABLE statements
@@ -97,7 +132,8 @@ public class DruidParserAdapter {
             // Check if this part contains a CREATE TABLE statement
             if (!trimmedPart.toUpperCase().contains("CREATE TABLE")) {
                 throw new SchemaParsingException(
-                    "Expected CREATE TABLE statement but found: " + trimmedPart.substring(0, Math.min(50, trimmedPart.length())));
+                        "Expected CREATE TABLE statement but found: "
+                                + trimmedPart.substring(0, Math.min(50, trimmedPart.length())));
             }
 
             SQLCreateTableParser parser = createParser(trimmedPart);
@@ -110,7 +146,7 @@ public class DruidParserAdapter {
                 statements.add(statement);
             } catch (Exception e) {
                 throw new SchemaParsingException(
-                    "Failed to parse CREATE TABLE statement: " + e.getMessage(), e);
+                        "Failed to parse CREATE TABLE statement: " + e.getMessage(), e);
             }
         }
 
@@ -187,7 +223,7 @@ public class DruidParserAdapter {
      * Extracts line number from exception if available.
      *
      * @param sql the original SQL
-     * @param e   the exception
+     * @param e the exception
      * @return the line number or -1 if not available
      */
     private int extractLineNumber(String sql, Exception e) {
@@ -209,7 +245,7 @@ public class DruidParserAdapter {
      * Extracts column number from exception if available.
      *
      * @param sql the original SQL
-     * @param e   the exception
+     * @param e the exception
      * @return the column number or -1 if not available
      */
     private int extractColumnNumber(String sql, Exception e) {
@@ -224,5 +260,41 @@ public class DruidParserAdapter {
             }
         }
         return -1;
+    }
+
+    /**
+     * Computes a SHA-256 hash of the SQL string for caching.
+     *
+     * @param sql the SQL string to hash
+     * @return the hash string
+     */
+    private String computeHash(String sql) {
+        synchronized (digest) {
+            digest.reset();
+            byte[] hash = digest.digest(sql.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        }
+    }
+
+    /**
+     * Gets cache statistics.
+     *
+     * @return the cache statistics
+     */
+    public SchemaCache.CacheStatistics getCacheStatistics() {
+        return cache.getStatistics();
+    }
+
+    /** Clears the schema cache. */
+    public void clearCache() {
+        cache.clear();
     }
 }

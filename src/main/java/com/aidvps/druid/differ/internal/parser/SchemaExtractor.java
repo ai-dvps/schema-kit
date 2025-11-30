@@ -16,8 +16,10 @@ package com.aidvps.druid.differ.internal.parser;
 
 import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.druid.differ.internal.model.Column;
+import com.aidvps.druid.differ.internal.model.Index;
 import com.aidvps.druid.differ.internal.model.Schema;
 import com.aidvps.druid.differ.internal.model.Table;
+import com.aidvps.druid.differ.internal.model.constraint.CheckConstraint;
 import com.aidvps.druid.differ.internal.model.constraint.Constraint;
 import com.aidvps.druid.differ.internal.model.constraint.ForeignKey;
 import com.aidvps.druid.differ.internal.model.constraint.PrimaryKey;
@@ -28,6 +30,7 @@ import com.aidvps.druid.sql.ast.expr.SQLIntegerExpr;
 import com.aidvps.druid.sql.ast.expr.SQLNullExpr;
 import com.aidvps.druid.sql.ast.expr.SQLPropertyExpr;
 import com.aidvps.druid.sql.ast.expr.SQLTextLiteralExpr;
+import com.aidvps.druid.sql.ast.statement.SQLCheck;
 import com.aidvps.druid.sql.ast.statement.SQLColumnConstraint;
 import com.aidvps.druid.sql.ast.statement.SQLColumnDefinition;
 import com.aidvps.druid.sql.ast.statement.SQLColumnPrimaryKey;
@@ -36,11 +39,15 @@ import com.aidvps.druid.sql.ast.statement.SQLCreateTableStatement;
 import com.aidvps.druid.sql.ast.statement.SQLForeignKeyConstraint;
 import com.aidvps.druid.sql.ast.statement.SQLNotNullConstraint;
 import com.aidvps.druid.sql.ast.statement.SQLPrimaryKey;
+import com.aidvps.druid.sql.ast.statement.SQLSelectOrderByItem;
 import com.aidvps.druid.sql.ast.statement.SQLTableElement;
 import com.aidvps.druid.sql.ast.statement.SQLUnique;
+import com.aidvps.druid.sql.dialect.mysql.ast.statement.MySqlTableIndex;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Extracts schema information from druid-parser AST objects.
@@ -91,16 +98,36 @@ class SchemaExtractor {
                 tableBuilder.addColumn(column);
 
                 // Extract any inline constraints (e.g., PRIMARY KEY) from the column
-                List<Constraint> inlineConstraints = extractInlineColumnConstraints(columnDef, tableName);
+                List<Constraint> inlineConstraints =
+                        extractInlineColumnConstraints(columnDef, tableName);
                 for (Constraint constraint : inlineConstraints) {
                     String constraintName = constraint.getName().orElse("PRIMARY");
                     tableBuilder.addConstraint(constraintName, constraint);
                 }
             } else if (element instanceof SQLConstraint) {
                 Constraint constraint = extractConstraint((SQLConstraint) element, tableName);
-                String constraintName = getConstraintName((SQLConstraint) element);
-                tableBuilder.addConstraint(constraintName, constraint);
+                if (constraint != null) {
+                    String constraintName = getConstraintName((SQLConstraint) element);
+                    tableBuilder.addConstraint(constraintName, constraint);
+                }
+            } else if (element instanceof MySqlTableIndex) {
+                Index index = extractIndex((MySqlTableIndex) element);
+                if (index != null) {
+                    tableBuilder.addIndex(index);
+                }
+            } else if (element instanceof SQLCheck) {
+                CheckConstraint checkConstraint = extractCheckConstraint((SQLCheck) element);
+                if (checkConstraint != null) {
+                    String constraintName = getConstraintName((SQLCheck) element);
+                    tableBuilder.addConstraint(constraintName, checkConstraint);
+                }
             }
+        }
+
+        // Extract table options (engine, tablespace, etc.)
+        Map<String, String> options = extractTableOptions(statement);
+        for (Map.Entry<String, String> option : options.entrySet()) {
+            tableBuilder.addOption(option.getKey(), option.getValue());
         }
 
         String comment = extractTableComment(statement);
@@ -172,7 +199,8 @@ class SchemaExtractor {
      * @param tableName the table name (for generating constraint names if needed)
      * @return a list of extracted constraints (may be empty)
      */
-    private List<Constraint> extractInlineColumnConstraints(SQLColumnDefinition columnDef, String tableName) {
+    private List<Constraint> extractInlineColumnConstraints(
+            SQLColumnDefinition columnDef, String tableName) {
         List<Constraint> constraints = new ArrayList<>();
         List<SQLColumnConstraint> columnConstraints = columnDef.getConstraints();
 
@@ -421,6 +449,83 @@ class SchemaExtractor {
             return ((SQLTextLiteralExpr) statement.getComment()).getText();
         }
         return null;
+    }
+
+    /** Extracts an Index from a MySqlTableIndex. */
+    private Index extractIndex(MySqlTableIndex indexElement) {
+        Index.Builder builder = new Index.Builder();
+
+        // Extract index name
+        if (indexElement.getName() != null) {
+            builder.name(extractIdentifier(indexElement.getName()));
+        }
+
+        // Extract columns
+        List<SQLSelectOrderByItem> columns = indexElement.getColumns();
+        if (columns != null) {
+            for (SQLSelectOrderByItem orderByItem : columns) {
+                SQLExpr expr = orderByItem.getExpr();
+                String columnName = extractIdentifier(expr);
+                builder.addColumn(columnName);
+            }
+        }
+
+        // Note: In druid-parser, UNIQUE indexes are typically represented via UNIQUE constraints
+        // Regular indexes (KEY, INDEX) are represented by MySqlTableIndex
+        // Set unique to false for regular indexes
+        builder.unique(false);
+
+        // Extract index type
+        String indexType = indexElement.getIndexType();
+        if (indexType != null && !indexType.isEmpty()) {
+            builder.type(indexType);
+        }
+
+        return builder.build();
+    }
+
+    /** Extracts a CheckConstraint from a SQLCheck. */
+    private CheckConstraint extractCheckConstraint(SQLCheck checkElement) {
+        String name = null;
+        if (checkElement.getName() != null) {
+            name = extractIdentifier(checkElement.getName());
+        }
+
+        SQLExpr expr = checkElement.getExpr();
+        if (expr == null) {
+            return null;
+        }
+
+        String expression = expr.toString();
+        return new CheckConstraint(name, expression);
+    }
+
+    /** Extracts table options (ENGINE, CHARSET, etc.). */
+    private Map<String, String> extractTableOptions(SQLCreateTableStatement statement) {
+        Map<String, String> options = new HashMap<>();
+
+        // Extract engine (MySQL specific)
+        SQLExpr engine = statement.getEngine();
+        if (engine != null) {
+            options.put("ENGINE", extractIdentifier(engine));
+        }
+
+        // Extract charset using getOption
+        SQLExpr charset = statement.getOption("CHARSET");
+        if (charset == null) {
+            charset = statement.getOption("CHARACTER SET");
+        }
+        if (charset != null) {
+            options.put("CHARSET", extractIdentifier(charset));
+        }
+
+        // Extract collate using getOption
+        SQLExpr collate = statement.getOption("COLLATE");
+        if (collate != null) {
+            options.put("COLLATE", extractIdentifier(collate));
+        }
+
+        return options;
     }
 
     /** Extracts character set. */
