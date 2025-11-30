@@ -21,13 +21,16 @@ import java.util.Objects;
  *
  * <p>This class allows users to customize how migrations are generated, including whether to wrap
  * the migration in a transaction, include comments, fail on destructive operations, and other
- * options.
+ * options for CI/CD integration.
  */
 public final class MigrationOptions {
 
     private final boolean wrapInTransaction;
     private final boolean includeComments;
     private final boolean failOnDestructive;
+    private final boolean includeRollback;
+    private final boolean dryRun;
+    private final long timeoutMillis;
 
     /**
      * Creates new MigrationOptions with default values.
@@ -35,12 +38,23 @@ public final class MigrationOptions {
      * @param wrapInTransaction whether to wrap migration in a transaction
      * @param includeComments whether to include explanatory comments in SQL
      * @param failOnDestructive whether to fail if destructive operations are detected
+     * @param includeRollback whether to include rollback SQL in the migration plan
+     * @param dryRun whether to only validate without generating SQL
+     * @param timeoutMillis timeout for migration generation in milliseconds
      */
     private MigrationOptions(
-            boolean wrapInTransaction, boolean includeComments, boolean failOnDestructive) {
+            boolean wrapInTransaction,
+            boolean includeComments,
+            boolean failOnDestructive,
+            boolean includeRollback,
+            boolean dryRun,
+            long timeoutMillis) {
         this.wrapInTransaction = wrapInTransaction;
         this.includeComments = includeComments;
         this.failOnDestructive = failOnDestructive;
+        this.includeRollback = includeRollback;
+        this.dryRun = dryRun;
+        this.timeoutMillis = timeoutMillis;
     }
 
     /**
@@ -71,6 +85,33 @@ public final class MigrationOptions {
     }
 
     /**
+     * Returns whether to include rollback SQL in the migration plan.
+     *
+     * @return true if rollback SQL should be included, false otherwise
+     */
+    public boolean isIncludeRollback() {
+        return includeRollback;
+    }
+
+    /**
+     * Returns whether this is a dry run (validate without generating SQL).
+     *
+     * @return true if this is a dry run, false otherwise
+     */
+    public boolean isDryRun() {
+        return dryRun;
+    }
+
+    /**
+     * Returns the timeout for migration generation in milliseconds.
+     *
+     * @return the timeout in milliseconds
+     */
+    public long getTimeoutMillis() {
+        return timeoutMillis;
+    }
+
+    /**
      * Creates a new Builder for MigrationOptions.
      *
      * @return a new Builder instance
@@ -85,7 +126,7 @@ public final class MigrationOptions {
      * @return default MigrationOptions
      */
     public static MigrationOptions defaults() {
-        return new MigrationOptions(false, true, false);
+        return new MigrationOptions(false, true, false, false, false, 30000);
     }
 
     @Override
@@ -95,12 +136,21 @@ public final class MigrationOptions {
         MigrationOptions that = (MigrationOptions) o;
         return wrapInTransaction == that.wrapInTransaction
                 && includeComments == that.includeComments
-                && failOnDestructive == that.failOnDestructive;
+                && failOnDestructive == that.failOnDestructive
+                && includeRollback == that.includeRollback
+                && dryRun == that.dryRun
+                && timeoutMillis == that.timeoutMillis;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(wrapInTransaction, includeComments, failOnDestructive);
+        return Objects.hash(
+                wrapInTransaction,
+                includeComments,
+                failOnDestructive,
+                includeRollback,
+                dryRun,
+                timeoutMillis);
     }
 
     @Override
@@ -112,6 +162,12 @@ public final class MigrationOptions {
                 + includeComments
                 + ", failOnDestructive="
                 + failOnDestructive
+                + ", includeRollback="
+                + includeRollback
+                + ", dryRun="
+                + dryRun
+                + ", timeoutMillis="
+                + timeoutMillis
                 + '}';
     }
 
@@ -120,6 +176,9 @@ public final class MigrationOptions {
         private boolean wrapInTransaction = false;
         private boolean includeComments = true;
         private boolean failOnDestructive = false;
+        private boolean includeRollback = false;
+        private boolean dryRun = false;
+        private long timeoutMillis = 30000;
 
         /**
          * Sets whether to wrap the migration in a transaction.
@@ -155,12 +214,51 @@ public final class MigrationOptions {
         }
 
         /**
+         * Sets whether to include rollback SQL in the migration plan.
+         *
+         * @param includeRollback true to include rollback SQL
+         * @return this Builder for chaining
+         */
+        public Builder includeRollback(boolean includeRollback) {
+            this.includeRollback = includeRollback;
+            return this;
+        }
+
+        /**
+         * Sets whether to perform a dry run (validate without generating SQL).
+         *
+         * @param dryRun true to perform a dry run
+         * @return this Builder for chaining
+         */
+        public Builder dryRun(boolean dryRun) {
+            this.dryRun = dryRun;
+            return this;
+        }
+
+        /**
+         * Sets the timeout for migration generation.
+         *
+         * @param timeoutMillis the timeout in milliseconds
+         * @return this Builder for chaining
+         */
+        public Builder timeoutMillis(long timeoutMillis) {
+            this.timeoutMillis = timeoutMillis;
+            return this;
+        }
+
+        /**
          * Builds the MigrationOptions.
          *
          * @return a new MigrationOptions instance
          */
         public MigrationOptions build() {
-            return new MigrationOptions(wrapInTransaction, includeComments, failOnDestructive);
+            return new MigrationOptions(
+                    wrapInTransaction,
+                    includeComments,
+                    failOnDestructive,
+                    includeRollback,
+                    dryRun,
+                    timeoutMillis);
         }
     }
 }
