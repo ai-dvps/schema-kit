@@ -94,6 +94,7 @@ public final class SchemaDiff {
     public static class Builder {
         private Set<DatabaseDiff> databaseDiffs;
         private Set<SchemaChange> changes;
+        private DatabaseDiff singleDatabaseDiff;
 
         private Builder() {}
 
@@ -108,6 +109,7 @@ public final class SchemaDiff {
                 databaseDiffs = new HashSet<>();
             }
             databaseDiffs.add(databaseDiff);
+            this.singleDatabaseDiff = databaseDiff;
             return this;
         }
 
@@ -131,6 +133,10 @@ public final class SchemaDiff {
          * @return The diff instance
          */
         public SchemaDiff build() {
+            if (singleDatabaseDiff != null && databaseDiffs == null) {
+                databaseDiffs = new HashSet<>();
+                databaseDiffs.add(singleDatabaseDiff);
+            }
             return new SchemaDiff(this);
         }
     }

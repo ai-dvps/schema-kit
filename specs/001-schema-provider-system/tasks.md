@@ -144,8 +144,8 @@
 
 ### Integration Tests
 
-- [ ] T073 [US1] End-to-end test: directory→schema→migration in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/E2EDirectoryToMigrationTest.java
-- [ ] T074 [US1] Test schema comparison accuracy (SC-003 validation) in schema-migrator/src/test/java/com/aidvps/schemakit/migrator/SchemaComparisonAccuracyTest.java
+- [X] T073 [US1] End-to-end test: directory→schema→migration in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/E2EDirectoryToMigrationTest.java
+- [X] T074 [US1] Test schema comparison accuracy (SC-003 validation) in schema-migrator/src/test/java/com/aidvps/schemakit/migrator/SchemaComparisonAccuracyTest.java
 
 **Checkpoint**: User Story 1 complete - directory-based schema retrieval and migration generation working independently
 

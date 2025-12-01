@@ -128,6 +128,20 @@ public final class TableDiff {
         return isModified;
     }
 
+    /**
+     * Check if there are any changes.
+     *
+     * @return true if there are changes
+     */
+    public boolean hasChanges() {
+        return isNew
+                || isDeleted
+                || isModified
+                || !columnDiffs.isEmpty()
+                || !indexDiffs.isEmpty()
+                || !constraintDiffs.isEmpty();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
