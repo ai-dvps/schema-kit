@@ -1,6 +1,6 @@
 package com.aidvps.schemakit.migrator;
 
-import com.aidvps.schemakit.core.DatabasePlatform;
+import com.aidvps.druid.differ.internal.model.DatabasePlatform;
 import java.util.Optional;
 
 /** Configuration for migration generation. */

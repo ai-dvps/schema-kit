@@ -1,6 +1,6 @@
 package com.aidvps.schemakit.migrator;
 
-import com.aidvps.schemakit.core.Schema;
+import com.aidvps.druid.differ.internal.model.Schema;
 
 /** Core interface for schema migration. */
 public interface SchemaMigrator {

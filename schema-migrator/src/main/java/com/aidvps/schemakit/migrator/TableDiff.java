@@ -1,9 +1,9 @@
 package com.aidvps.schemakit.migrator;
 
-import com.aidvps.schemakit.core.Column;
-import com.aidvps.schemakit.core.Constraint;
-import com.aidvps.schemakit.core.Index;
-import com.aidvps.schemakit.core.Table;
+import com.aidvps.druid.differ.internal.model.Column;
+import com.aidvps.druid.differ.internal.model.Index;
+import com.aidvps.druid.differ.internal.model.Table;
+import com.aidvps.druid.differ.internal.model.constraint.Constraint;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
@@ -446,7 +446,9 @@ public final class TableDiff {
             if (columnDiffs == null) {
                 columnDiffs = new HashSet<>();
             }
-            columnDiffs.add(columnDiff);
+            if (columnDiff != null) {
+                columnDiffs.add(columnDiff);
+            }
             return this;
         }
 
@@ -460,7 +462,9 @@ public final class TableDiff {
             if (indexDiffs == null) {
                 indexDiffs = new HashSet<>();
             }
-            indexDiffs.add(indexDiff);
+            if (indexDiff != null) {
+                indexDiffs.add(indexDiff);
+            }
             return this;
         }
 
@@ -474,7 +478,9 @@ public final class TableDiff {
             if (constraintDiffs == null) {
                 constraintDiffs = new HashSet<>();
             }
-            constraintDiffs.add(constraintDiff);
+            if (constraintDiff != null) {
+                constraintDiffs.add(constraintDiff);
+            }
             return this;
         }
 

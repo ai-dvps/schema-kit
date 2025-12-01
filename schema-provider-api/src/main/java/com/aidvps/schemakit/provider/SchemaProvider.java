@@ -1,6 +1,6 @@
 package com.aidvps.schemakit.provider;
 
-import com.aidvps.schemakit.core.Schema;
+import com.aidvps.druid.differ.internal.model.Schema;
 
 /** Core interface for all schema source providers. */
 public interface SchemaProvider {

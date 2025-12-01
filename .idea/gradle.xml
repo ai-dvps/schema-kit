@@ -4,10 +4,16 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="#JAVA_HOME" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/schema-core" />
+            <option value="$PROJECT_DIR$/schema-migrator" />
+            <option value="$PROJECT_DIR$/schema-provider-api" />
+            <option value="$PROJECT_DIR$/schema-provider-db" />
+            <option value="$PROJECT_DIR$/schema-provider-dir" />
+            <option value="$PROJECT_DIR$/schema-provider-git" />
+            <option value="$PROJECT_DIR$/schema-provider-jar" />
           </set>
         </option>
       </GradleProjectSettings>

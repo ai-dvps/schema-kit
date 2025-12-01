@@ -1,4 +1,4 @@
-package com.aidvps.schemakit.core;
+package com.aidvps.druid.differ.internal.model;
 
 import java.util.*;
 

@@ -1,4 +1,4 @@
-package com.aidvps.schemakit.core;
+package com.aidvps.druid.differ.internal.model;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -107,7 +107,7 @@ public final class Database {
     public List<Index> getAllIndexes() {
         List<Index> allIndexes = new ArrayList<>();
         for (Table table : tables.values()) {
-            allIndexes.addAll(table.getIndexes().values());
+            allIndexes.addAll(table.getIndexes());
         }
         return allIndexes;
     }
@@ -117,8 +117,9 @@ public final class Database {
      *
      * @return List of all constraints
      */
-    public List<Constraint> getAllConstraints() {
-        List<Constraint> allConstraints = new ArrayList<>();
+    public List<com.aidvps.druid.differ.internal.model.constraint.Constraint> getAllConstraints() {
+        List<com.aidvps.druid.differ.internal.model.constraint.Constraint> allConstraints =
+                new ArrayList<>();
         for (Table table : tables.values()) {
             allConstraints.addAll(table.getConstraints().values());
         }

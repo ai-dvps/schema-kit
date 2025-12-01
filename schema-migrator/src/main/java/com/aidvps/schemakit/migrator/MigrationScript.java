@@ -1,6 +1,6 @@
 package com.aidvps.schemakit.migrator;
 
-import com.aidvps.schemakit.core.DatabasePlatform;
+import com.aidvps.druid.differ.internal.model.DatabasePlatform;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -134,7 +134,9 @@ public final class MigrationScript {
             if (statements == null) {
                 statements = new ArrayList<>();
             }
-            statements.add(statement);
+            if (statement != null) {
+                statements.add(statement);
+            }
             return this;
         }
 

@@ -41,7 +41,8 @@
       "Bash(if:*)",
       "Bash(then:*)",
       "Bash(else echo:*)",
-      "Bash(javap:*)"
+      "Bash(javap:*)",
+      "Bash(paste:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 package com.aidvps.schemakit.migrator;
 
-import com.aidvps.schemakit.core.Database;
+import com.aidvps.druid.differ.internal.model.Database;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;

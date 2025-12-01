@@ -17,6 +17,7 @@ To create a commit, just type:
 4. Analyzes the diff to determine if multiple distinct logical changes are present
 5. If multiple distinct changes are detected, suggests breaking the commit into multiple smaller commits
 6. For each commit (or the single commit if not split), creates a commit message using emoji conventional commit format
+7. project could use speckit, before generate the commit message, check the /specs folder under the project root, if exists, analyze the changes under the /specs, make the commit message more cohesive.
 
 ## Best Practices for Commits
 
