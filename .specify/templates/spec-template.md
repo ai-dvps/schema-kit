@@ -1,70 +1,115 @@
-# Feature Specification: [FEATURE_NAME]
+# Feature Specification: [FEATURE NAME]
 
-## Executive Summary
-High-level overview of the feature.
+**Feature Branch**: `[###-feature-name]`  
+**Created**: [DATE]  
+**Status**: Draft  
+**Input**: User description: "$ARGUMENTS"
 
-## Requirements
+## User Scenarios & Testing *(mandatory)*
+
+<!--
+  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
+  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
+  you should still have a viable MVP (Minimum Viable Product) that delivers value.
+  
+  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
+  Think of each story as a standalone slice of functionality that can be:
+  - Developed independently
+  - Tested independently
+  - Deployed independently
+  - Demonstrated to users independently
+-->
+
+### User Story 1 - [Brief Title] (Priority: P1)
+
+[Describe this user journey in plain language]
+
+**Why this priority**: [Explain the value and why it has this priority level]
+
+**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+
+**Acceptance Scenarios**:
+
+1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+---
+
+### User Story 2 - [Brief Title] (Priority: P2)
+
+[Describe this user journey in plain language]
+
+**Why this priority**: [Explain the value and why it has this priority level]
+
+**Independent Test**: [Describe how this can be tested independently]
+
+**Acceptance Scenarios**:
+
+1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+---
+
+### User Story 3 - [Brief Title] (Priority: P3)
+
+[Describe this user journey in plain language]
+
+**Why this priority**: [Explain the value and why it has this priority level]
+
+**Independent Test**: [Describe how this can be tested independently]
+
+**Acceptance Scenarios**:
+
+1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+---
+
+[Add more user stories as needed, each with an assigned priority]
+
+### Edge Cases
+
+<!--
+  ACTION REQUIRED: The content in this section represents placeholders.
+  Fill them out with the right edge cases.
+-->
+
+- What happens when [boundary condition]?
+- How does system handle [error scenario]?
+
+## Requirements *(mandatory)*
+
+<!--
+  ACTION REQUIRED: The content in this section represents placeholders.
+  Fill them out with the right functional requirements.
+-->
 
 ### Functional Requirements
-1. **REQ-001**: [Requirement description]
-   - Priority: [HIGH/MEDIUM/LOW]
-   - Acceptance Criteria: [Detailed criteria]
 
-### Non-Functional Requirements
-1. **Performance**: All operations must complete within [X]ms
-2. **Scalability**: Must handle [N] concurrent requests
-3. **Reliability**: [Availability percentage] uptime
-4. **Security**: [Security requirements]
+- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
+- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
+- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
+- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
+- **FR-005**: System MUST [behavior, e.g., "log all security events"]
 
-## Constitution-Driven Requirements
-- **API Stability**: Changes MUST maintain backward compatibility per Constitution Principle 5
-- **Testing Coverage**: MUST achieve 90% line coverage per Constitution Principle 3
-- **Documentation**: MUST include JavaDoc per Constitution Principle 6
-- **Performance**: MUST include JMH benchmarks per Constitution Principle 7
+*Example of marking unclear requirements:*
 
-## Architecture
+- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
+- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
-### Component Design
-Description of major components and their interactions.
+### Key Entities *(include if feature involves data)*
 
-### API Design
-Public API signatures and contracts.
+- **[Entity 1]**: [What it represents, key attributes without implementation]
+- **[Entity 2]**: [What it represents, relationships to other entities]
 
-## Implementation Details
+## Success Criteria *(mandatory)*
 
-### Algorithm/Logic
-Detailed algorithm descriptions.
+<!--
+  ACTION REQUIRED: Define measurable success criteria.
+  These must be technology-agnostic and measurable.
+-->
 
-### Data Structures
-Data structure choices and rationale.
+### Measurable Outcomes
 
-## Testing Plan
-
-### Unit Tests
-- Test classes: [List]
-- Coverage target: 90%
-- Tools: JUnit 5, Mockito
-
-### Integration Tests
-- Test scenarios: [List]
-- Tools: Testcontainers
-- Java versions: 8+
-
-### Performance Tests
-- Benchmark scope: [Operations to benchmark]
-- Tools: JMH
-- Regression threshold: 10%
-
-## Documentation Requirements
-- [ ] JavaDoc for all public classes and methods
-- [ ] README updates
-- [ ] Usage examples with executable code
-- [ ] Migration guide (if breaking changes)
-
-## Risks and Mitigation
-- [Risk 1]: [Mitigation]
-- [Risk 2]: [Mitigation]
-
-## Success Metrics
-- [Metric 1]: [Target]
-- [Metric 2]: [Target]
+- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
+- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
+- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
+- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
