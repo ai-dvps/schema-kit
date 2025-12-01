@@ -30,7 +30,8 @@ class SchemaProviderFactoryTest {
     void setUp() {
         // Clear any previously registered providers
         try {
-            java.lang.reflect.Field field = SchemaProviderFactory.class.getDeclaredField("providers");
+            java.lang.reflect.Field field =
+                    SchemaProviderFactory.class.getDeclaredField("providers");
             field.setAccessible(true);
             @SuppressWarnings("unchecked")
             java.util.Map<ProviderType, SchemaProvider> providers =
@@ -61,9 +62,10 @@ class SchemaProviderFactoryTest {
     @Test
     void testCreateProviderThrowsForNullType() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> SchemaProviderFactory.createProvider(null));
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> SchemaProviderFactory.createProvider(null));
 
         assertEquals("Provider type must not be null", exception.getMessage());
     }
@@ -71,9 +73,10 @@ class SchemaProviderFactoryTest {
     @Test
     void testCreateProviderThrowsForUnregisteredType() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> SchemaProviderFactory.createProvider(ProviderType.DIRECTORY));
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> SchemaProviderFactory.createProvider(ProviderType.DIRECTORY));
 
         assertTrue(exception.getMessage().contains("Provider type not supported"));
         assertTrue(exception.getMessage().contains("DIRECTORY"));
@@ -85,9 +88,10 @@ class SchemaProviderFactoryTest {
         SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, mockProvider1);
 
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> SchemaProviderFactory.createProvider(ProviderType.CUSTOM));
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> SchemaProviderFactory.createProvider(ProviderType.CUSTOM));
 
         assertTrue(exception.getMessage().contains("Provider type not supported"));
         assertTrue(exception.getMessage().contains("CUSTOM"));
@@ -96,9 +100,10 @@ class SchemaProviderFactoryTest {
     @Test
     void testRegisterProviderThrowsForNullType() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> SchemaProviderFactory.registerProvider(null, mockProvider1));
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> SchemaProviderFactory.registerProvider(null, mockProvider1));
 
         assertEquals("Provider type must not be null", exception.getMessage());
     }
@@ -106,9 +111,10 @@ class SchemaProviderFactoryTest {
     @Test
     void testRegisterProviderThrowsForNullProvider() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, null));
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, null));
 
         assertEquals("Provider must not be null", exception.getMessage());
     }
@@ -175,7 +181,8 @@ class SchemaProviderFactoryTest {
         SchemaProviderFactory.registerProvider(ProviderType.GIT, gitProvider);
 
         // Assert
-        assertEquals(directoryProvider, SchemaProviderFactory.createProvider(ProviderType.DIRECTORY));
+        assertEquals(
+                directoryProvider, SchemaProviderFactory.createProvider(ProviderType.DIRECTORY));
         assertEquals(databaseProvider, SchemaProviderFactory.createProvider(ProviderType.DATABASE));
         assertEquals(gitProvider, SchemaProviderFactory.createProvider(ProviderType.GIT));
     }
@@ -183,8 +190,10 @@ class SchemaProviderFactoryTest {
     @Test
     void testFactoryCannotBeInstantiated() {
         // Act & Assert
-        assertThrows(UnsupportedOperationException.class, () -> {
-            SchemaProviderFactory.class.getDeclaredConstructor().newInstance();
-        });
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> {
+                    SchemaProviderFactory.class.getDeclaredConstructor().newInstance();
+                });
     }
 }

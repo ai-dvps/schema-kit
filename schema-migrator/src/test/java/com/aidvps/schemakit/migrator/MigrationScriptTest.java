@@ -78,7 +78,10 @@ class MigrationScriptTest {
         // Arrange
         MigrationStatement statement = Mockito.mock(MigrationStatement.class);
         MigrationScript script =
-                MigrationScript.builder().targetPlatform(DatabasePlatform.MYSQL).mode(MigrationMode.FULL).build();
+                MigrationScript.builder()
+                        .targetPlatform(DatabasePlatform.MYSQL)
+                        .mode(MigrationMode.FULL)
+                        .build();
 
         // Act
         MigrationScript result = script.addStatement(statement);
@@ -287,7 +290,10 @@ class MigrationScriptTest {
                         .build();
 
         MigrationScript script2 =
-                MigrationScript.builder().targetPlatform(DatabasePlatform.POSTGRESQL).mode(MigrationMode.FULL).build();
+                MigrationScript.builder()
+                        .targetPlatform(DatabasePlatform.POSTGRESQL)
+                        .mode(MigrationMode.FULL)
+                        .build();
 
         // Assert
         assertNotSame(script1, script2);

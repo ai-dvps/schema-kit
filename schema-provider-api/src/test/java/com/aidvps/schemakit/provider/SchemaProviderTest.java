@@ -53,16 +53,16 @@ class SchemaProviderTest {
     @Test
     void testGetSchemaThrowsExceptionOnError() throws SchemaProviderException {
         // Arrange
-        when(provider.getSchema(config)).thenThrow(new SchemaProviderException(
-                SchemaProviderException.ErrorCode.SOURCE_NOT_FOUND, "Test error"));
+        when(provider.getSchema(config))
+                .thenThrow(
+                        new SchemaProviderException(
+                                SchemaProviderException.ErrorCode.SOURCE_NOT_FOUND, "Test error"));
 
         // Act & Assert
-        SchemaProviderException exception = assertThrows(
-                SchemaProviderException.class,
-                () -> provider.getSchema(config));
+        SchemaProviderException exception =
+                assertThrows(SchemaProviderException.class, () -> provider.getSchema(config));
 
-        assertEquals(SchemaProviderException.ErrorCode.SOURCE_NOT_FOUND,
-                exception.getErrorCode());
+        assertEquals(SchemaProviderException.ErrorCode.SOURCE_NOT_FOUND, exception.getErrorCode());
         assertEquals("Test error", exception.getMessage());
     }
 
@@ -83,8 +83,7 @@ class SchemaProviderTest {
     @Test
     void testValidateConfigThrowsExceptionForNullConfig() {
         // Act & Assert
-        assertThrows(SchemaProviderException.class,
-                () -> provider.validateConfig(null));
+        assertThrows(SchemaProviderException.class, () -> provider.validateConfig(null));
     }
 
     @Test
@@ -96,17 +95,19 @@ class SchemaProviderTest {
     @Test
     void testDefaultValidateConfigDoesNotThrow() throws SchemaProviderException {
         // Use the default implementation
-        SchemaProvider providerWithDefault = new SchemaProvider() {
-            @Override
-            public Schema getSchema(SchemaProviderConfig config) throws SchemaProviderException {
-                return null;
-            }
+        SchemaProvider providerWithDefault =
+                new SchemaProvider() {
+                    @Override
+                    public Schema getSchema(SchemaProviderConfig config)
+                            throws SchemaProviderException {
+                        return null;
+                    }
 
-            @Override
-            public ProviderType getType() {
-                return null;
-            }
-        };
+                    @Override
+                    public ProviderType getType() {
+                        return null;
+                    }
+                };
 
         // Act & Assert
         assertDoesNotThrow(() -> providerWithDefault.validateConfig(config));
@@ -115,20 +116,21 @@ class SchemaProviderTest {
     @Test
     void testDefaultValidateConfigThrowsForNullConfig() {
         // Use the default implementation
-        SchemaProvider providerWithDefault = new SchemaProvider() {
-            @Override
-            public Schema getSchema(SchemaProviderConfig config) throws SchemaProviderException {
-                return null;
-            }
+        SchemaProvider providerWithDefault =
+                new SchemaProvider() {
+                    @Override
+                    public Schema getSchema(SchemaProviderConfig config)
+                            throws SchemaProviderException {
+                        return null;
+                    }
 
-            @Override
-            public ProviderType getType() {
-                return null;
-            }
-        };
+                    @Override
+                    public ProviderType getType() {
+                        return null;
+                    }
+                };
 
         // Act & Assert
-        assertThrows(SchemaProviderException.class,
-                () -> providerWithDefault.validateConfig(null));
+        assertThrows(SchemaProviderException.class, () -> providerWithDefault.validateConfig(null));
     }
 }

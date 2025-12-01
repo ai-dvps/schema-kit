@@ -78,17 +78,18 @@ class SchemaProviderConfigTest {
     @Test
     void testDefaultValidateDoesNotThrow() {
         // Use the default implementation
-        SchemaProviderConfig configWithDefault = new SchemaProviderConfig() {
-            @Override
-            public Map<String, Object> toMap() {
-                return testMap;
-            }
+        SchemaProviderConfig configWithDefault =
+                new SchemaProviderConfig() {
+                    @Override
+                    public Map<String, Object> toMap() {
+                        return testMap;
+                    }
 
-            @Override
-            public void validate() {
-                // Default: no-op
-            }
-        };
+                    @Override
+                    public void validate() {
+                        // Default: no-op
+                    }
+                };
 
         // Act & Assert
         assertDoesNotThrow(() -> configWithDefault.validate());
@@ -103,9 +104,11 @@ class SchemaProviderConfigTest {
         Map<String, Object> result = config.toMap();
 
         // Assert - the map should be unmodifiable
-        assertThrows(UnsupportedOperationException.class, () -> {
-            result.put("key3", "value3");
-        });
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> {
+                    result.put("key3", "value3");
+                });
     }
 
     @Test

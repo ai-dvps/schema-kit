@@ -64,9 +64,10 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testGetSecretThrowsExceptionForNonExistentKey() {
         // Act & Assert
-        SecretNotFoundException exception = assertThrows(
-                SecretNotFoundException.class,
-                () -> provider.getSecret("NON_EXISTENT_KEY"));
+        SecretNotFoundException exception =
+                assertThrows(
+                        SecretNotFoundException.class,
+                        () -> provider.getSecret("NON_EXISTENT_KEY"));
 
         assertEquals("NON_EXISTENT_KEY", exception.getKey());
     }
@@ -74,16 +75,14 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testGetSecretThrowsExceptionForNullKey() {
         // Act & Assert
-        assertThrows(NullPointerException.class,
-                () -> provider.getSecret(null));
+        assertThrows(NullPointerException.class, () -> provider.getSecret(null));
     }
 
     @Test
     void testGetSecretThrowsExceptionForEmptyKey() {
         // Act & Assert
-        SecretNotFoundException exception = assertThrows(
-                SecretNotFoundException.class,
-                () -> provider.getSecret(""));
+        SecretNotFoundException exception =
+                assertThrows(SecretNotFoundException.class, () -> provider.getSecret(""));
 
         assertEquals("", exception.getKey());
     }

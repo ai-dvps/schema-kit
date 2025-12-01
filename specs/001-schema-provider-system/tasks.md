@@ -121,26 +121,26 @@
 
 ### Tests for User Story 1 (TDD - Write First, Ensure FAIL)
 
-- [ ] T059 [P] [US1] Contract test for directory schema provider in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/DirectorySchemaProviderContractTest.java
-- [ ] T060 [P] [US1] Integration test for directory file parsing in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/DirectoryFileParsingIntegrationTest.java
-- [ ] T061 [P] [US1] Unit test for .db file parser in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/DatabaseFileParserTest.java
-- [ ] T062 [P] [US1] Unit test for .tbl file parser in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/TableFileParserTest.java
-- [ ] T063 [P] [US1] Integration test for directory→migrator workflow in schema-migrator/src/test/java/com/aidvps/schemakit/migrator/DirectoryMigrationIntegrationTest.java
+- [x] T059 [P] [US1] Contract test for directory schema provider in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/DirectorySchemaProviderContractTest.java
+- [x] T060 [P] [US1] Integration test for directory file parsing in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/DirectoryFileParsingIntegrationTest.java
+- [x] T061 [P] [US1] Unit test for .db file parser in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/DatabaseFileParserTest.java
+- [x] T062 [P] [US1] Unit test for .tbl file parser in schema-provider-dir/src/test/java/com/aidvps/schemakit/provider/dir/TableFileParserTest.java
+- [x] T063 [P] [US1] Integration test for directory→migrator workflow in schema-migrator/src/test/java/com/aidvps/schemakit/migrator/DirectoryMigrationIntegrationTest.java
 
 ### Directory Provider Implementation
 
-- [ ] T064 [P] [US1] Implement DirectorySchemaProviderConfig interface in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DirectorySchemaProviderConfig.java
-- [ ] T065 [P] [US1] Implement DirectorySchemaProvider in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DirectorySchemaProvider.java
-- [ ] T066 [P] [US1] Implement DatabaseFileParser in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DatabaseFileParser.java
-- [ ] T067 [P] [US1] Implement TableFileParser in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/TableFileParser.java
-- [ ] T068 [P] [US1] Implement DirectoryStructureValidator in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DirectoryStructureValidator.java
+- [x] T064 [P] [US1] Implement DirectorySchemaProviderConfig interface in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DirectorySchemaProviderConfig.java
+- [x] T065 [P] [US1] Implement DirectorySchemaProvider in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DirectorySchemaProvider.java
+- [x] T066 [P] [US1] Implement DatabaseFileParser in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DatabaseFileParser.java
+- [x] T067 [P] [US1] Implement TableFileParser in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/TableFileParser.java
+- [x] T068 [P] [US1] Implement DirectoryStructureValidator in schema-provider-dir/src/main/java/com/aidvps/schemakit/provider/dir/DirectoryStructureValidator.java
 
 ### Integration with Migrator
 
-- [ ] T069 [US1] Implement DefaultSchemaMigrator in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/DefaultSchemaMigrator.java (depends on T043)
-- [ ] T070 [US1] Implement SchemaComparator in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/SchemaComparator.java
-- [ ] T071 [US1] Implement SqlGenerator in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/SqlGenerator.java
-- [ ] T072 [US1] Implement DependencyAnalyzer in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/DependencyAnalyzer.java
+- [x] T069 [US1] Implement DefaultSchemaMigrator in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/DefaultSchemaMigrator.java (depends on T043)
+- [x] T070 [US1] Implement SchemaComparator in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/SchemaComparator.java
+- [x] T071 [US1] Implement SqlGenerator in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/SqlGenerator.java
+- [x] T072 [US1] Implement DependencyAnalyzer in schema-migrator/src/main/java/com/aidvps/schemakit/migrator/DependencyAnalyzer.java
 
 ### Integration Tests
 

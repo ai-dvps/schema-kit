@@ -69,25 +69,25 @@ class ProviderTypeTest {
     @Test
     void testAllTypesHaveDescriptions() {
         // Act & Assert
-        assertAll("All ProviderTypes should have descriptions",
+        assertAll(
+                "All ProviderTypes should have descriptions",
                 () -> assertNotNull(ProviderType.DIRECTORY.getDescription()),
                 () -> assertNotNull(ProviderType.DATABASE.getDescription()),
                 () -> assertNotNull(ProviderType.GIT.getDescription()),
                 () -> assertNotNull(ProviderType.JAR.getDescription()),
-                () -> assertNotNull(ProviderType.CUSTOM.getDescription())
-        );
+                () -> assertNotNull(ProviderType.CUSTOM.getDescription()));
     }
 
     @Test
     void testAllDescriptionsAreNonEmpty() {
         // Act & Assert
-        assertAll("All descriptions should be non-empty",
+        assertAll(
+                "All descriptions should be non-empty",
                 () -> assertFalse(ProviderType.DIRECTORY.getDescription().isEmpty()),
                 () -> assertFalse(ProviderType.DATABASE.getDescription().isEmpty()),
                 () -> assertFalse(ProviderType.GIT.getDescription().isEmpty()),
                 () -> assertFalse(ProviderType.JAR.getDescription().isEmpty()),
-                () -> assertFalse(ProviderType.CUSTOM.getDescription().isEmpty())
-        );
+                () -> assertFalse(ProviderType.CUSTOM.getDescription().isEmpty()));
     }
 
     @Test
@@ -124,9 +124,11 @@ class ProviderTypeTest {
     @Test
     void testValueOfThrowsForInvalidValue() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> {
-            ProviderType.valueOf("INVALID_TYPE");
-        });
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> {
+                    ProviderType.valueOf("INVALID_TYPE");
+                });
     }
 
     @Test

@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'com.diffplug.spotless' version '6.0.0'
+    id 'com.diffplug.spotless' version '5.17.0'
     id 'jacoco'
     id 'me.champeau.jmh' version '0.7.2'
     id 'java-library'
@@ -40,7 +40,7 @@ subprojects {
 
     spotless {
         java {
-            googleJavaFormat('1.17.0').aosp()
+            googleJavaFormat('1.7').aosp()
             lineEndings 'UNIX'
         }
     }

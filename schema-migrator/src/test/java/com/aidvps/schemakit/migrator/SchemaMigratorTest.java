@@ -118,5 +118,4 @@ class SchemaMigratorTest {
         assertEquals(mockResult, result);
         verify(migrator).validateMigration(script, targetSchema);
     }
-
 }
