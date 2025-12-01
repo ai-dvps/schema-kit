@@ -1,72 +1,72 @@
 plugins {
     id 'java'
-    id 'com.diffplug.spotless' version '6.21.0'
+    id 'com.diffplug.spotless' version '6.0.0'
     id 'jacoco'
     id 'me.champeau.jmh' version '0.7.2'
+    id 'java-library'
 }
 
 group = 'com.aidvps.schemakit'
 version = '1.1.0'
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
-
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.mockito:mockito-core:5.7.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    // Testcontainers for integration testing
-    testImplementation 'org.testcontainers:junit-jupiter:1.19.2'
-    testImplementation 'org.testcontainers:mysql:1.19.2'
-    testImplementation 'org.testcontainers:postgresql:1.19.2'
-    testImplementation 'org.testcontainers:oracle-xe:1.19.2'
-    testImplementation 'org.testcontainers:mssqlserver:1.19.2'
-
-    // HikariCP for DataSource creation
-    testImplementation 'com.zaxxer:HikariCP:5.0.1'
-
-    // JMH benchmarks need access to main dependencies
-    jmh 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
-}
-
-test {
-    useJUnitPlatform()
-}
-
-// Java version compatibility testing
-sourceCompatibility = '8'
-targetCompatibility = '8'
-
-tasks.withType(JavaCompile) {
-    options.encoding = 'UTF-8'
-}
-
-spotless {
-    java {
-        googleJavaFormat('1.17.0').aosp()
-        formatAnnotations()
-        importOrder()
-        removeUnusedImports()
-        cleanthat()
-        lineEndings 'UNIX'
+allprojects {
+    repositories {
+        mavenLocal()
+        mavenCentral()
     }
 }
 
-// JMH Benchmark Configuration
-jmh {
-    jmhVersion = '1.37'
-    includeTests = false
-    duplicateClassesStrategy = DuplicatesStrategy.WARN
-    fork = 1
-    warmupIterations = 3
-    iterations = 5
-    timeUnit = 'ms'
-    resultFormat = 'JSON'
+// Common configuration for all modules
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'com.diffplug.spotless'
+    apply plugin: 'jacoco'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(8)
+        }
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    spotless {
+        java {
+            googleJavaFormat('1.17.0').aosp()
+            lineEndings 'UNIX'
+        }
+    }
+
+    jacoco {
+        toolVersion = '0.8.11'
+    }
+
+    tasks.named('test') {
+        finalizedBy jacocoTestReport
+    }
+
+    tasks.named('jacocoTestReport') {
+        dependsOn test
+        reports {
+            xml.required = true
+            csv.required = false
+            html.required = true
+        }
+    }
+}
+
+// Common dependencies
+ext {
+    junitBomVersion = '5.10.0'
+    junitVersion = '5.10.0'
+    mockitoVersion = '5.7.0'
+    testcontainersVersion = '1.19.2'
 }

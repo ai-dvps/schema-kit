@@ -1,1 +1,9 @@
 rootProject.name = 'schema-kit-v2'
+
+include 'schema-core'
+include 'schema-provider-api'
+include 'schema-provider-dir'
+include 'schema-provider-db'
+include 'schema-provider-git'
+include 'schema-provider-jar'
+include 'schema-migrator'

@@ -1,0 +1,42 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    implementation 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
+
+    // Test dependencies
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core:5.7.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Testcontainers for integration testing
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.2'
+    testImplementation 'org.testcontainers:mysql:1.19.2'
+    testImplementation 'org.testcontainers:postgresql:1.19.2'
+    testImplementation 'org.testcontainers:oracle-xe:1.19.2'
+    testImplementation 'org.testcontainers:mssqlserver:1.19.2'
+
+    // HikariCP for DataSource creation (Java 8 compatible)
+    testImplementation 'com.zaxxer:HikariCP:4.0.1'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// JMH benchmarks configuration (applied at project level)
+// To run JMH: ./gradlew :schema-core:jmh
+
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Schema Kit Core',
+            'Implementation-Version': version,
+            'Automatic-Module-Name': 'com.aidvps.schemakit.core'
+        )
+    }
+}

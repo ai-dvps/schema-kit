@@ -1,0 +1,35 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    implementation project(':schema-core')
+    implementation project(':schema-provider-api')
+
+    // For parsing SQL
+    implementation 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'
+
+    // Test dependencies
+    testImplementation platform("org.junit:junit-bom:${junitBomVersion}")
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.2'
+    testImplementation 'org.testcontainers:mysql:1.19.2'
+    testImplementation 'org.testcontainers:postgresql:1.19.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Schema Kit Migrator',
+            'Implementation-Version': version,
+            'Automatic-Module-Name': 'com.aidvps.schemakit.migrator'
+        )
+    }
+}

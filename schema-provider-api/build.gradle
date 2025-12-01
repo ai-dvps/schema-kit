@@ -1,0 +1,28 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api project(':schema-core')
+
+    // Test dependencies
+    testImplementation platform("org.junit:junit-bom:${junitBomVersion}")
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Schema Kit Provider API',
+            'Implementation-Version': version,
+            'Automatic-Module-Name': 'com.aidvps.schemakit.provider'
+        )
+    }
+}
