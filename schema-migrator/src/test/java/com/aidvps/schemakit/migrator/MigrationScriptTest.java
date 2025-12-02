@@ -98,6 +98,7 @@ class MigrationScriptTest {
         MigrationScript script =
                 MigrationScript.builder()
                         .targetPlatform(DatabasePlatform.MYSQL)
+                        .mode(MigrationMode.FULL)
                         .statement(statement)
                         .build();
 
@@ -189,6 +190,7 @@ class MigrationScriptTest {
         MigrationScript script =
                 MigrationScript.builder()
                         .targetPlatform(DatabasePlatform.MYSQL)
+                        .mode(MigrationMode.FULL)
                         .statement(statement)
                         .build();
 
@@ -218,7 +220,7 @@ class MigrationScriptTest {
 
         // Assert - modification should not affect internal state
         Map<String, Object> metadata2 = script.getMetadata();
-        assertTrue(metadata2.containsKey("newKey"));
+        assertFalse(metadata2.containsKey("newKey"), "Metadata should be a copy");
         assertNotSame(metadata, script.getMetadata());
     }
 
