@@ -82,14 +82,44 @@ class SchemaProviderTest {
 
     @Test
     void testValidateConfigThrowsExceptionForNullConfig() {
+        // Create a real implementation to test default behavior
+        SchemaProvider providerWithDefault =
+                new SchemaProvider() {
+                    @Override
+                    public Schema getSchema(SchemaProviderConfig config)
+                            throws SchemaProviderException {
+                        return null;
+                    }
+
+                    @Override
+                    public ProviderType getType() {
+                        return null;
+                    }
+                };
+
         // Act & Assert
-        assertThrows(SchemaProviderException.class, () -> provider.validateConfig(null));
+        assertThrows(SchemaProviderException.class, () -> providerWithDefault.validateConfig(null));
     }
 
     @Test
     void testValidateConfigDoesNotThrowForValidConfig() {
+        // Create a real implementation to test default behavior
+        SchemaProvider providerWithDefault =
+                new SchemaProvider() {
+                    @Override
+                    public Schema getSchema(SchemaProviderConfig config)
+                            throws SchemaProviderException {
+                        return null;
+                    }
+
+                    @Override
+                    public ProviderType getType() {
+                        return null;
+                    }
+                };
+
         // Act & Assert - should not throw
-        assertDoesNotThrow(() -> provider.validateConfig(config));
+        assertDoesNotThrow(() -> providerWithDefault.validateConfig(config));
     }
 
     @Test

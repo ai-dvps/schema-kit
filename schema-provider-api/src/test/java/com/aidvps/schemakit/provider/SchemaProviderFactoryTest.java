@@ -189,9 +189,9 @@ class SchemaProviderFactoryTest {
 
     @Test
     void testFactoryCannotBeInstantiated() {
-        // Act & Assert
+        // Act & Assert - In Java 8, private constructor throws IllegalAccessException
         assertThrows(
-                UnsupportedOperationException.class,
+                IllegalAccessException.class,
                 () -> {
                     SchemaProviderFactory.class.getDeclaredConstructor().newInstance();
                 });

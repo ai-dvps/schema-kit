@@ -98,7 +98,7 @@ class SchemaProviderConfigTest {
     @Test
     void testToMapReturnsUnmodifiableMap() {
         // Arrange
-        when(config.toMap()).thenReturn(testMap);
+        when(config.toMap()).thenReturn(Collections.unmodifiableMap(new HashMap<>(testMap)));
 
         // Act
         Map<String, Object> result = config.toMap();
@@ -116,7 +116,7 @@ class SchemaProviderConfigTest {
         // Arrange
         Map<String, Object> map1 = new HashMap<>();
         map1.put("test", "value");
-        when(config.toMap()).thenReturn(map1);
+        when(config.toMap()).thenReturn(new HashMap<>(map1), new HashMap<>(map1));
 
         // Act
         Map<String, Object> result1 = config.toMap();

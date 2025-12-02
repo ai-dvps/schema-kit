@@ -27,32 +27,23 @@ import org.junit.jupiter.api.Test;
 class EnvironmentVariableSecretProviderTest {
 
     private EnvironmentVariableSecretProvider provider;
-    private Map<String, String> originalEnvVars;
+    private Map<String, String> testEnvVars;
 
     @BeforeEach
     void setUp() {
-        // Save original environment variables
-        originalEnvVars = new HashMap<>(System.getenv());
-
-        provider = new EnvironmentVariableSecretProvider();
+        testEnvVars = new HashMap<>();
+        provider = new EnvironmentVariableSecretProvider(testEnvVars);
     }
 
     @AfterEach
     void tearDown() {
-        // Restore original environment variables
-        if (originalEnvVars != null) {
-            // Note: In Java 8, we cannot fully clear env vars, so we just restore
-            // This is a limitation of Java 8's System.getenv()
-            for (Map.Entry<String, String> entry : originalEnvVars.entrySet()) {
-                System.setProperty(entry.getKey(), entry.getValue());
-            }
-        }
+        testEnvVars.clear();
     }
 
     @Test
     void testGetSecretReturnsValueForExistingKey() throws SecretNotFoundException {
         // Arrange
-        setEnvVar("TEST_SECRET", "test_value");
+        testEnvVars.put("TEST_SECRET", "test_value");
 
         // Act
         String result = provider.getSecret("TEST_SECRET");
@@ -90,7 +81,7 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testHasSecretReturnsTrueForExistingKey() {
         // Arrange
-        setEnvVar("TEST_SECRET", "test_value");
+        testEnvVars.put("TEST_SECRET", "test_value");
 
         // Act
         boolean result = provider.hasSecret("TEST_SECRET");
@@ -129,9 +120,9 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testGetSecretReturnsMultipleValuesCorrectly() throws SecretNotFoundException {
         // Arrange
-        setEnvVar("SECRET_1", "value1");
-        setEnvVar("SECRET_2", "value2");
-        setEnvVar("SECRET_3", "value3");
+        testEnvVars.put("SECRET_1", "value1");
+        testEnvVars.put("SECRET_2", "value2");
+        testEnvVars.put("SECRET_3", "value3");
 
         // Act
         String result1 = provider.getSecret("SECRET_1");
@@ -147,8 +138,8 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testHasSecretForMultipleKeys() {
         // Arrange
-        setEnvVar("SECRET_1", "value1");
-        setEnvVar("SECRET_2", "value2");
+        testEnvVars.put("SECRET_1", "value1");
+        testEnvVars.put("SECRET_2", "value2");
 
         // Act & Assert
         assertTrue(provider.hasSecret("SECRET_1"));
@@ -159,7 +150,7 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testGetSecretWithSpecialCharacters() throws SecretNotFoundException {
         // Arrange
-        setEnvVar("SPECIAL_SECRET", "value!@#$%^&*()_+={}[]|\\:;\"'<>,.?/");
+        testEnvVars.put("SPECIAL_SECRET", "value!@#$%^&*()_+={}[]|\\:;\"'<>,.?/");
 
         // Act
         String result = provider.getSecret("SPECIAL_SECRET");
@@ -171,7 +162,7 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testGetSecretWithUnicode() throws SecretNotFoundException {
         // Arrange
-        setEnvVar("UNICODE_SECRET", "unicode_value_测试");
+        testEnvVars.put("UNICODE_SECRET", "unicode_value_测试");
 
         // Act
         String result = provider.getSecret("UNICODE_SECRET");
@@ -183,7 +174,7 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testGetSecretWithEmptyValue() throws SecretNotFoundException {
         // Arrange
-        setEnvVar("EMPTY_SECRET", "");
+        testEnvVars.put("EMPTY_SECRET", "");
 
         // Act
         String result = provider.getSecret("EMPTY_SECRET");
@@ -195,7 +186,7 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testHasSecretWithEmptyValue() {
         // Arrange
-        setEnvVar("EMPTY_SECRET", "");
+        testEnvVars.put("EMPTY_SECRET", "");
 
         // Act
         boolean result = provider.hasSecret("EMPTY_SECRET");
@@ -207,7 +198,7 @@ class EnvironmentVariableSecretProviderTest {
     @Test
     void testCaseSensitiveKeys() {
         // Arrange
-        setEnvVar("Secret_Key", "value");
+        testEnvVars.put("Secret_Key", "value");
 
         // Act & Assert
         assertTrue(provider.hasSecret("Secret_Key"));
@@ -219,9 +210,5 @@ class EnvironmentVariableSecretProviderTest {
     void testConstructorDoesNotThrow() {
         // Act & Assert
         assertDoesNotThrow(() -> new EnvironmentVariableSecretProvider());
-    }
-
-    private void setEnvVar(String key, String value) {
-        System.setProperty(key, value);
     }
 }
