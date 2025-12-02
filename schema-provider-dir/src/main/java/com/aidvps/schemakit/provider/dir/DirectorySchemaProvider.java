@@ -106,9 +106,11 @@ public class DirectorySchemaProvider implements SchemaProvider {
             // In a real implementation, we might want to separate by database
             // This is a simplified approach for the MVP
 
-            // Create a schema builder - we need to determine the dialect
-            // For now, use MYSQL as default, but this should be configurable
-            DatabaseDialect dialect = DatabaseDialect.MYSQL;
+            // Get dialect from config, default to MYSQL if not specified
+            DatabaseDialect dialect = dirConfig.getDialect();
+            if (dialect == null) {
+                dialect = DatabaseDialect.MYSQL;
+            }
 
             Schema.Builder schemaBuilder = Schema.builder(dialect);
 

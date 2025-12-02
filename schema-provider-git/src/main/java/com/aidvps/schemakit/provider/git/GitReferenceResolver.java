@@ -57,8 +57,7 @@ public class GitReferenceResolver {
         // Determine the type of reference and resolve accordingly
         ReferenceType type = determineReferenceType(trimmedRef);
 
-        // TODO: Implement actual git command execution for resolution
-        // For now, return a placeholder that validates the format
+        // Resolve the reference to a commit hash
         try {
             switch (type) {
                 case COMMIT_HASH:
@@ -155,10 +154,31 @@ public class GitReferenceResolver {
      * @throws IOException if resolution fails
      */
     private String resolveBranch(String repositoryPath, String branch) throws IOException {
-        // TODO: Implement git command to resolve branch to commit hash
-        // git rev-parse origin/branch or git rev-parse branch
-        throw new UnsupportedOperationException(
-                "GitReferenceResolver.resolveBranch implementation in progress");
+        // Execute git command to resolve branch to commit hash
+        // Try: git rev-parse {branch} or git rev-parse origin/{branch}
+
+        if (repositoryPath == null || repositoryPath.trim().isEmpty()) {
+            throw new IOException("Repository path must not be null or empty");
+        }
+
+        try {
+            // First try local branch
+            String result = executeGitCommand(repositoryPath, "rev-parse", branch);
+            if (isValidCommitHash(result.trim())) {
+                return result.trim().toLowerCase();
+            }
+
+            // Try remote branch if local not found
+            result = executeGitCommand(repositoryPath, "rev-parse", "origin/" + branch);
+            if (isValidCommitHash(result.trim())) {
+                return result.trim().toLowerCase();
+            }
+
+            throw new IOException("Branch not found: " + branch);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Git command interrupted while resolving branch: " + branch, e);
+        }
     }
 
     /**
@@ -170,10 +190,71 @@ public class GitReferenceResolver {
      * @throws IOException if resolution fails
      */
     private String resolveTag(String repositoryPath, String tag) throws IOException {
-        // TODO: Implement git command to resolve tag to commit hash
-        // git rev-parse tag
-        throw new UnsupportedOperationException(
-                "GitReferenceResolver.resolveTag implementation in progress");
+        // Execute git command to resolve tag to commit hash
+        // git rev-parse {tag}
+
+        if (repositoryPath == null || repositoryPath.trim().isEmpty()) {
+            throw new IOException("Repository path must not be null or empty");
+        }
+
+        try {
+            String result = executeGitCommand(repositoryPath, "rev-parse", tag);
+            if (isValidCommitHash(result.trim())) {
+                return result.trim().toLowerCase();
+            }
+            throw new IOException("Tag not found: " + tag);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Git command interrupted while resolving tag: " + tag, e);
+        }
+    }
+
+    /**
+     * Execute a git command and return the output.
+     *
+     * @param repositoryPath Path to the repository
+     * @param command Git command arguments
+     * @return Command output
+     * @throws IOException if command fails
+     * @throws InterruptedException if interrupted
+     */
+    private String executeGitCommand(String repositoryPath, String... command)
+            throws IOException, InterruptedException {
+        String[] fullCommand = new String[command.length + 1];
+        fullCommand[0] = "git";
+        System.arraycopy(command, 0, fullCommand, 1, command.length);
+
+        Process process =
+                Runtime.getRuntime().exec(fullCommand, null, new java.io.File(repositoryPath));
+
+        // Read output
+        StringBuilder output = new StringBuilder();
+        try (java.io.BufferedReader reader =
+                new java.io.BufferedReader(
+                        new java.io.InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+        }
+
+        // Check for errors
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            StringBuilder errorOutput = new StringBuilder();
+            try (java.io.BufferedReader errorReader =
+                    new java.io.BufferedReader(
+                            new java.io.InputStreamReader(process.getErrorStream()))) {
+                String errorLine;
+                while ((errorLine = errorReader.readLine()) != null) {
+                    errorOutput.append(errorLine).append("\n");
+                }
+            }
+            throw new IOException(
+                    "Git command failed with exit code " + exitCode + ": " + errorOutput);
+        }
+
+        return output.toString();
     }
 
     /** Enum representing different types of git references. */

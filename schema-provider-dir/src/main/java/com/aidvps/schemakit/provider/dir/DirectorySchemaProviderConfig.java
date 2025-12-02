@@ -14,6 +14,7 @@
 
 package com.aidvps.schemakit.provider.dir;
 
+import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.schemakit.provider.ProviderType;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import java.util.HashMap;
@@ -26,11 +27,13 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
     private final String directoryPath;
     private final boolean validateStructure;
     private final boolean followSymlinks;
+    private final DatabaseDialect dialect;
 
     private DirectorySchemaProviderConfig(Builder builder) {
         this.directoryPath = builder.directoryPath;
         this.validateStructure = builder.validateStructure;
         this.followSymlinks = builder.followSymlinks;
+        this.dialect = builder.dialect;
     }
 
     public static Builder builder() {
@@ -54,6 +57,11 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
     }
 
     @Override
+    public DatabaseDialect getDialect() {
+        return dialect;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -64,12 +72,13 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
         DirectorySchemaProviderConfig that = (DirectorySchemaProviderConfig) o;
         return validateStructure == that.validateStructure
                 && followSymlinks == that.followSymlinks
-                && Objects.equals(directoryPath, that.directoryPath);
+                && Objects.equals(directoryPath, that.directoryPath)
+                && Objects.equals(dialect, that.dialect);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(directoryPath, validateStructure, followSymlinks);
+        return Objects.hash(directoryPath, validateStructure, followSymlinks, dialect);
     }
 
     @Override
@@ -78,6 +87,7 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
         map.put("directoryPath", directoryPath);
         map.put("validateStructure", validateStructure);
         map.put("followSymlinks", followSymlinks);
+        map.put("dialect", dialect);
         map.put("type", getType().name());
         return map;
     }
@@ -92,6 +102,8 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
                 + validateStructure
                 + ", followSymlinks="
                 + followSymlinks
+                + ", dialect="
+                + dialect
                 + '}';
     }
 
@@ -101,6 +113,7 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
         private String directoryPath;
         private boolean validateStructure = true;
         private boolean followSymlinks = false;
+        private DatabaseDialect dialect;
 
         private Builder() {}
 
@@ -119,9 +132,18 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
             return this;
         }
 
+        public Builder dialect(DatabaseDialect dialect) {
+            this.dialect = dialect;
+            return this;
+        }
+
         public DirectorySchemaProviderConfig build() {
             if (directoryPath == null || directoryPath.trim().isEmpty()) {
                 throw new IllegalArgumentException("directoryPath must not be null or empty");
+            }
+            // Default to MYSQL if not specified
+            if (dialect == null) {
+                dialect = DatabaseDialect.MYSQL;
             }
             return new DirectorySchemaProviderConfig(this);
         }

@@ -78,9 +78,12 @@ public class TemporaryRepository implements AutoCloseable {
      * @throws IOException if unable to read commit hash
      */
     public String getCurrentCommit() throws IOException {
-        // TODO: Implement git command execution to get commit hash
-        throw new UnsupportedOperationException(
-                "TemporaryRepository.getCurrentCommit implementation in progress");
+        try {
+            return executeGitCommand("rev-parse", "HEAD").trim();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Git command interrupted while getting current commit", e);
+        }
     }
 
     /**
@@ -90,9 +93,61 @@ public class TemporaryRepository implements AutoCloseable {
      * @throws IOException if unable to read branch name
      */
     public String getCurrentBranch() throws IOException {
-        // TODO: Implement git command execution to get branch name
-        throw new UnsupportedOperationException(
-                "TemporaryRepository.getCurrentBranch implementation in progress");
+        try {
+            String branch = executeGitCommand("rev-parse", "--abbrev-ref", "HEAD").trim();
+            // Handle special cases like HEAD (detached)
+            if ("HEAD".equals(branch)) {
+                throw new IOException("Repository is in detached HEAD state");
+            }
+            return branch;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Git command interrupted while getting current branch", e);
+        }
+    }
+
+    /**
+     * Execute a git command in this repository.
+     *
+     * @param command Git command arguments
+     * @return Command output
+     * @throws IOException if command fails
+     * @throws InterruptedException if interrupted
+     */
+    private String executeGitCommand(String... command) throws IOException, InterruptedException {
+        String[] fullCommand = new String[command.length + 1];
+        fullCommand[0] = "git";
+        System.arraycopy(command, 0, fullCommand, 1, command.length);
+
+        Process process = Runtime.getRuntime().exec(fullCommand, null, repositoryPath.toFile());
+
+        // Read output
+        StringBuilder output = new StringBuilder();
+        try (java.io.BufferedReader reader =
+                new java.io.BufferedReader(
+                        new java.io.InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+        }
+
+        // Check for errors
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            StringBuilder errorOutput = new StringBuilder();
+            try (java.io.BufferedReader errorReader =
+                    new java.io.BufferedReader(
+                            new java.io.InputStreamReader(process.getErrorStream()))) {
+                String errorLine;
+                while ((errorLine = errorReader.readLine()) != null) {
+                    errorOutput.append(errorLine).append("\n");
+                }
+            }
+            throw new IOException("Git command failed: " + errorOutput);
+        }
+
+        return output.toString();
     }
 
     /**

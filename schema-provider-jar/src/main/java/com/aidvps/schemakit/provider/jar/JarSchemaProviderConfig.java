@@ -14,6 +14,7 @@
 
 package com.aidvps.schemakit.provider.jar;
 
+import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.schemakit.provider.ProviderType;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import java.util.HashMap;
@@ -32,12 +33,14 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
     private final String resourcePath;
     private final boolean extractToTemporary;
     private final boolean validateJar;
+    private final DatabaseDialect dialect;
 
     private JarSchemaProviderConfig(Builder builder) {
         this.jarPath = builder.jarPath;
         this.resourcePath = builder.resourcePath;
         this.extractToTemporary = builder.extractToTemporary;
         this.validateJar = builder.validateJar;
+        this.dialect = builder.dialect;
     }
 
     /**
@@ -91,6 +94,11 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
     }
 
     @Override
+    public DatabaseDialect getDialect() {
+        return dialect;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -102,12 +110,13 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
         return extractToTemporary == that.extractToTemporary
                 && validateJar == that.validateJar
                 && Objects.equals(jarPath, that.jarPath)
-                && Objects.equals(resourcePath, that.resourcePath);
+                && Objects.equals(resourcePath, that.resourcePath)
+                && Objects.equals(dialect, that.dialect);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(jarPath, resourcePath, extractToTemporary, validateJar);
+        return Objects.hash(jarPath, resourcePath, extractToTemporary, validateJar, dialect);
     }
 
     @Override
@@ -117,6 +126,7 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
         map.put("resourcePath", resourcePath);
         map.put("extractToTemporary", extractToTemporary);
         map.put("validateJar", validateJar);
+        map.put("dialect", dialect);
         map.put("type", getType().name());
         return map;
     }
@@ -134,6 +144,8 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
                 + extractToTemporary
                 + ", validateJar="
                 + validateJar
+                + ", dialect="
+                + dialect
                 + '}';
     }
 
@@ -144,6 +156,7 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
         private String resourcePath;
         private boolean extractToTemporary = true;
         private boolean validateJar = true;
+        private DatabaseDialect dialect;
 
         private Builder() {}
 
@@ -194,6 +207,17 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
         }
 
         /**
+         * Set the database dialect for schema generation. Defaults to MYSQL if not specified.
+         *
+         * @param dialect Database dialect
+         * @return This builder
+         */
+        public Builder dialect(DatabaseDialect dialect) {
+            this.dialect = dialect;
+            return this;
+        }
+
+        /**
          * Build the JarSchemaProviderConfig.
          *
          * @return JarSchemaProviderConfig instance
@@ -202,6 +226,10 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
         public JarSchemaProviderConfig build() {
             if (jarPath == null || jarPath.trim().isEmpty()) {
                 throw new IllegalArgumentException("jarPath must not be null or empty");
+            }
+            // Default to MYSQL if not specified
+            if (dialect == null) {
+                dialect = DatabaseDialect.MYSQL;
             }
             return new JarSchemaProviderConfig(this);
         }

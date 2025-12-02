@@ -14,6 +14,7 @@
 
 package com.aidvps.schemakit.provider.git;
 
+import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.schemakit.provider.ProviderType;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
     private final String reference;
     private final GitCredentials credentials;
     private final boolean cloneToTemporary;
+    private final DatabaseDialect dialect;
 
     private GitSchemaProviderConfig(Builder builder) {
         this.repositoryPath = builder.repositoryPath;
@@ -40,6 +42,7 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
         this.reference = builder.reference;
         this.credentials = builder.credentials;
         this.cloneToTemporary = builder.cloneToTemporary;
+        this.dialect = builder.dialect;
     }
 
     /**
@@ -101,6 +104,11 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
     }
 
     @Override
+    public DatabaseDialect getDialect() {
+        return dialect;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -113,12 +121,14 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
                 && Objects.equals(repositoryPath, that.repositoryPath)
                 && Objects.equals(branch, that.branch)
                 && Objects.equals(reference, that.reference)
-                && Objects.equals(credentials, that.credentials);
+                && Objects.equals(credentials, that.credentials)
+                && Objects.equals(dialect, that.dialect);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(repositoryPath, branch, reference, credentials, cloneToTemporary);
+        return Objects.hash(
+                repositoryPath, branch, reference, credentials, cloneToTemporary, dialect);
     }
 
     @Override
@@ -129,6 +139,7 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
         map.put("reference", reference);
         map.put("credentials", credentials);
         map.put("cloneToTemporary", cloneToTemporary);
+        map.put("dialect", dialect);
         map.put("type", getType().name());
         return map;
     }
@@ -149,6 +160,8 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
                 + credentials
                 + ", cloneToTemporary="
                 + cloneToTemporary
+                + ", dialect="
+                + dialect
                 + '}';
     }
 
@@ -160,6 +173,7 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
         private String reference;
         private GitCredentials credentials;
         private boolean cloneToTemporary = true;
+        private DatabaseDialect dialect;
 
         private Builder() {}
 
@@ -219,6 +233,17 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
         }
 
         /**
+         * Set the database dialect for schema generation. Defaults to MYSQL if not specified.
+         *
+         * @param dialect Database dialect
+         * @return This builder
+         */
+        public Builder dialect(DatabaseDialect dialect) {
+            this.dialect = dialect;
+            return this;
+        }
+
+        /**
          * Build the GitSchemaProviderConfig.
          *
          * @return GitSchemaProviderConfig instance
@@ -227,6 +252,10 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
         public GitSchemaProviderConfig build() {
             if (repositoryPath == null || repositoryPath.trim().isEmpty()) {
                 throw new IllegalArgumentException("repositoryPath must not be null or empty");
+            }
+            // Default to MYSQL if not specified
+            if (dialect == null) {
+                dialect = DatabaseDialect.MYSQL;
             }
             return new GitSchemaProviderConfig(this);
         }
