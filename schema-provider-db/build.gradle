@@ -21,7 +21,8 @@ dependencies {
     testImplementation 'org.testcontainers:mysql:1.19.2'
     testImplementation 'org.testcontainers:postgresql:1.19.2'
     testImplementation 'org.testcontainers:mariadb:1.19.2'
-    testImplementation 'org.testcontainers:sqlite:1.19.2'
+    testImplementation 'org.xerial:sqlite-jdbc:3.43.0.0'
+    testImplementation project(':schema-migrator')
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

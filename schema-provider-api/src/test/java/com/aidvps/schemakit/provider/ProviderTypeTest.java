@@ -132,10 +132,13 @@ class ProviderTypeTest {
     }
 
     @Test
-    void testToStringReturnsDescription() {
+    void testGetDescriptionReturnsDescription() {
         // Act & Assert
-        assertEquals("Directory-based file provider", ProviderType.DIRECTORY.toString());
-        assertEquals("Live database connection provider", ProviderType.DATABASE.toString());
+        assertEquals("Directory-based file provider", ProviderType.DIRECTORY.getDescription());
+        assertEquals("Live database connection provider", ProviderType.DATABASE.getDescription());
+        assertEquals("Git repository provider", ProviderType.GIT.getDescription());
+        assertEquals("JAR-embedded file provider", ProviderType.JAR.getDescription());
+        assertEquals("Custom provider", ProviderType.CUSTOM.getDescription());
     }
 
     private void assertContains(ProviderType[] types, ProviderType expected) {
