@@ -141,7 +141,7 @@ class GitSchemaProviderContractTest {
         // Arrange
         GitSchemaProviderConfig validConfig =
                 GitSchemaProviderConfig.builder()
-                        .repositoryPath("https://github.com/user/repo.git")
+                        .repositoryPath("https://gitee.com/ziscloud/for-test.git")
                         .build();
 
         // Act & Assert

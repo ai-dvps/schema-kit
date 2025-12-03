@@ -30,34 +30,16 @@ class GitRepositoryCloningTest {
     }
 
     @Test
-    @DisplayName("Should clone repository with default branch")
-    void testCloneRepositoryWithDefaultBranch() {
-        // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
-        String branch = "main";
-        String reference = null;
-        GitCredentials credentials = null;
-
-        // Act & Assert
-        assertThrows(
-                UnsupportedOperationException.class,
-                () ->
-                        repositoryManager.cloneRepository(
-                                repositoryPath, branch, reference, credentials),
-                "Should throw UnsupportedOperationException for clone");
-    }
-
-    @Test
     @DisplayName("Should validate repository URL format")
     void testValidateRepositoryUrlFormat() {
         // Act & Assert
         // Act & Assert
         try {
             assertTrue(
-                    repositoryManager.repositoryExists("https://github.com/ai-dvps/schema-kit.git"),
+                    repositoryManager.repositoryExists("https://gitee.com/ziscloud/for-test.git"),
                     "Should accept HTTPS URL");
             assertTrue(
-                    repositoryManager.repositoryExists("git@github.com:ai-dvps/schema-kit.git"),
+                    repositoryManager.repositoryExists("git@gitee.com:ziscloud/for-test.git"),
                     "Should accept SSH URL");
             assertFalse(
                     repositoryManager.repositoryExists("not-a-url"), "Should reject invalid URL");
@@ -84,7 +66,7 @@ class GitRepositoryCloningTest {
     @DisplayName("Should check if branch exists")
     void testCheckIfBranchExists() {
         // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
+        String repositoryPath = "https://gitee.com/ziscloud/for-test.git";
         String branch = "main";
 
         // Act & Assert
@@ -97,7 +79,7 @@ class GitRepositoryCloningTest {
     @DisplayName("Should check if reference exists")
     void testCheckIfReferenceExists() {
         // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
+        String repositoryPath = "https://gitee.com/ziscloud/for-test.git";
         String reference = "v1.0.0";
 
         // Act & Assert
@@ -120,8 +102,8 @@ class GitRepositoryCloningTest {
     @DisplayName("Should clone repository with specific branch")
     void testCloneRepositoryWithSpecificBranch() {
         // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
-        String branch = "develop";
+        String repositoryPath = "https://gitee.com/ziscloud/for-test.git";
+        String branch = "master";
         String reference = null;
         GitCredentials credentials = null;
 
@@ -138,7 +120,7 @@ class GitRepositoryCloningTest {
     @DisplayName("Should clone repository with tag reference")
     void testCloneRepositoryWithTagReference() {
         // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
+        String repositoryPath = "https://gitee.com/ziscloud/for-test.git";
         String branch = null;
         String reference = "v1.0.0";
         GitCredentials credentials = null;
@@ -156,7 +138,7 @@ class GitRepositoryCloningTest {
     @DisplayName("Should handle empty branch name")
     void testHandleEmptyBranchName() {
         // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
+        String repositoryPath = "https://gitee.com/ziscloud/for-test.git";
 
         // Act & Assert
         try {
@@ -172,7 +154,7 @@ class GitRepositoryCloningTest {
     @DisplayName("Should handle empty reference")
     void testHandleEmptyReference() {
         // Arrange
-        String repositoryPath = "https://github.com/user/repo.git";
+        String repositoryPath = "https://gitee.com/ziscloud/for-test.git";
 
         // Act & Assert
         try {

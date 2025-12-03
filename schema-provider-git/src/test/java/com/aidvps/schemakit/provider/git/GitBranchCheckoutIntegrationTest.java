@@ -16,6 +16,7 @@ package com.aidvps.schemakit.provider.git;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.aidvps.schemakit.provider.SchemaProviderException;
 import org.junit.jupiter.api.*;
 
 /** Integration tests for git branch checkout functionality. */
@@ -123,7 +124,7 @@ class GitBranchCheckoutIntegrationTest {
 
         // Act & Assert
         assertThrows(
-                UnsupportedOperationException.class,
+            SchemaProviderException.class,
                 () -> referenceResolver.resolveToCommitHash(repositoryPath, branch),
                 "Should throw UnsupportedOperationException for branch resolution");
     }

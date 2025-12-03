@@ -51,7 +51,7 @@ class GitCommitReferenceTest {
     @DisplayName("Should handle full commit hash (40 characters)")
     void testHandleFullCommitHash() {
         // Arrange
-        String fullHash = "abc123def456789abc123def456789abc123def45";
+        String fullHash = "abc123def456789abc123def456789abc123def4";
 
         // Act & Assert
         assertEquals(

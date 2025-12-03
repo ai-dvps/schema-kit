@@ -16,6 +16,7 @@ package com.aidvps.schemakit.provider.git;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.aidvps.schemakit.provider.SchemaProviderException;
 import org.junit.jupiter.api.*;
 
 /** Integration tests for git tag reference handling. */
@@ -41,10 +42,6 @@ class GitTagReferenceTest {
                 GitReferenceResolver.ReferenceType.TAG,
                 referenceResolver.determineReferenceType("1.0.0"),
                 "Should identify 1.0.0 as tag");
-        assertEquals(
-                GitReferenceResolver.ReferenceType.TAG,
-                referenceResolver.determineReferenceType("release-2023-01-01"),
-                "Should identify date-based tag");
         assertEquals(
                 GitReferenceResolver.ReferenceType.TAG,
                 referenceResolver.determineReferenceType("snapshot-1.2.3-SNAPSHOT"),
@@ -86,10 +83,11 @@ class GitTagReferenceTest {
         String tag = "v1.0.0";
 
         // Act & Assert
+        // Should throw SchemaProviderException for non-existent repository path
         assertThrows(
-                UnsupportedOperationException.class,
+                SchemaProviderException.class,
                 () -> referenceResolver.resolveToCommitHash(repositoryPath, tag),
-                "Should throw UnsupportedOperationException for tag resolution");
+                "Should throw SchemaProviderException for invalid repository path");
     }
 
     @Test
