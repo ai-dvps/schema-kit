@@ -17,7 +17,7 @@ package com.aidvps.schemakit.provider.dir;
 import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.druid.differ.internal.model.Schema;
 import com.aidvps.druid.differ.internal.model.Table;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProvider;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
@@ -51,8 +51,8 @@ public class DirectorySchemaProvider implements SchemaProvider {
     }
 
     @Override
-    public ProviderType getType() {
-        return ProviderType.DIRECTORY;
+    public String getProviderId() {
+        return BuiltInProviders.DIRECTORY;
     }
 
     @Override

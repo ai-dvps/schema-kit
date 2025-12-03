@@ -43,7 +43,8 @@
       "Bash(else echo:*)",
       "Bash(javap:*)",
       "Bash(paste:*)",
-      "Bash(java -version)"
+      "Bash(java -version)",
+      "Skill(/commit)"
     ],
     "deny": [],
     "ask": []

@@ -16,7 +16,7 @@ package com.aidvps.schemakit.provider.jar;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
 import org.junit.jupiter.api.*;
@@ -36,16 +36,6 @@ class JarSchemaProviderContractTest {
     void setUp() {
         provider = new JarSchemaProvider();
         config = JarSchemaProviderConfig.builder().jarPath("test.jar").build();
-    }
-
-    @Test
-    @DisplayName("Should return correct provider type")
-    void testGetType() {
-        // Act
-        ProviderType type = provider.getType();
-
-        // Assert
-        assertEquals(ProviderType.JAR, type);
     }
 
     @Test

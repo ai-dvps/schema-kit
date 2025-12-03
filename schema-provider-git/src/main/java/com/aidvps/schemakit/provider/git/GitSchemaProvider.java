@@ -15,7 +15,7 @@
 package com.aidvps.schemakit.provider.git;
 
 import com.aidvps.druid.differ.internal.model.Schema;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProvider;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
@@ -43,8 +43,8 @@ public class GitSchemaProvider implements SchemaProvider {
     }
 
     @Override
-    public ProviderType getType() {
-        return ProviderType.GIT;
+    public String getProviderId() {
+        return BuiltInProviders.GIT;
     }
 
     @Override

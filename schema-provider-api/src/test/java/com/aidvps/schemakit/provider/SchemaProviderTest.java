@@ -67,17 +67,17 @@ class SchemaProviderTest {
     }
 
     @Test
-    void testGetTypeReturnsProviderType() {
+    void testGetProviderIdReturnsId() {
         // Arrange
-        when(provider.getType()).thenReturn(ProviderType.DIRECTORY);
+        when(provider.getProviderId()).thenReturn("test-provider");
 
         // Act
-        ProviderType result = provider.getType();
+        String result = provider.getProviderId();
 
         // Assert
         assertNotNull(result);
-        assertEquals(ProviderType.DIRECTORY, result);
-        verify(provider).getType();
+        assertEquals("test-provider", result);
+        verify(provider).getProviderId();
     }
 
     @Test
@@ -92,8 +92,8 @@ class SchemaProviderTest {
                     }
 
                     @Override
-                    public ProviderType getType() {
-                        return null;
+                    public String getProviderId() {
+                        return "test-provider";
                     }
                 };
 
@@ -113,8 +113,8 @@ class SchemaProviderTest {
                     }
 
                     @Override
-                    public ProviderType getType() {
-                        return null;
+                    public String getProviderId() {
+                        return "test-provider";
                     }
                 };
 
@@ -134,8 +134,8 @@ class SchemaProviderTest {
                     }
 
                     @Override
-                    public ProviderType getType() {
-                        return null;
+                    public String getProviderId() {
+                        return "test-provider";
                     }
                 };
 
@@ -155,8 +155,8 @@ class SchemaProviderTest {
                     }
 
                     @Override
-                    public ProviderType getType() {
-                        return null;
+                    public String getProviderId() {
+                        return "test-provider";
                     }
                 };
 

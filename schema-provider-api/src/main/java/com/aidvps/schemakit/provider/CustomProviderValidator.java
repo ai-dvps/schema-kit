@@ -142,12 +142,12 @@ public class CustomProviderValidator {
 
         // Check for required methods
         try {
-            Method getTypeMethod = providerClass.getMethod("getType");
-            if (!getTypeMethod.getReturnType().equals(ProviderType.class)) {
-                result.addError("getType() must return ProviderType");
+            Method getProviderIdMethod = providerClass.getMethod("getProviderId");
+            if (!getProviderIdMethod.getReturnType().equals(String.class)) {
+                result.addError("getProviderId() must return String");
             }
         } catch (NoSuchMethodException e) {
-            result.addError("Missing required method: getType()");
+            result.addError("Missing required method: getProviderId()");
         }
 
         try {
@@ -163,15 +163,12 @@ public class CustomProviderValidator {
 
     private void validateMethods(SchemaProvider provider, ValidationResult result) {
         try {
-            ProviderType type = provider.getType();
-            if (type == null) {
-                result.addError("getType() returned null");
-            } else if (type != ProviderType.CUSTOM) {
-                result.addWarning(
-                        "Provider type is " + type + ", expected CUSTOM for custom providers");
+            String providerId = provider.getProviderId();
+            if (providerId == null || providerId.trim().isEmpty()) {
+                result.addError("getProviderId() returned null or empty");
             }
         } catch (Exception e) {
-            result.addError("getType() threw exception: " + e.getMessage());
+            result.addError("getProviderId() threw exception: " + e.getMessage());
         }
 
         // Check getSchema with null config

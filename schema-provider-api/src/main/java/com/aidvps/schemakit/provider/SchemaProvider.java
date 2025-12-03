@@ -14,11 +14,11 @@ public interface SchemaProvider {
     Schema getSchema(SchemaProviderConfig config) throws SchemaProviderException;
 
     /**
-     * Get the type of this provider.
+     * Get the unique identifier for this provider.
      *
-     * @return ProviderType (DIRECTORY, DATABASE, GIT, JAR, CUSTOM)
+     * @return Unique provider identifier
      */
-    ProviderType getType();
+    String getProviderId();
 
     /**
      * Validate configuration without retrieving schema.

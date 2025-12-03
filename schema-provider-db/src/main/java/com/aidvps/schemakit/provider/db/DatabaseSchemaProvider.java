@@ -15,7 +15,7 @@
 package com.aidvps.schemakit.provider.db;
 
 import com.aidvps.druid.differ.internal.model.Schema;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProvider;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
@@ -30,8 +30,8 @@ public class DatabaseSchemaProvider implements SchemaProvider {
     }
 
     @Override
-    public ProviderType getType() {
-        return ProviderType.DATABASE;
+    public String getProviderId() {
+        return BuiltInProviders.DATABASE;
     }
 
     @Override

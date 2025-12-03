@@ -15,7 +15,6 @@
 package com.aidvps.schemakit.provider.jar;
 
 import com.aidvps.druid.differ.DatabaseDialect;
-import com.aidvps.schemakit.provider.ProviderType;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,10 +49,6 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
      */
     public static Builder builder() {
         return new Builder();
-    }
-
-    public ProviderType getType() {
-        return ProviderType.JAR;
     }
 
     /**
@@ -127,7 +122,6 @@ public class JarSchemaProviderConfig implements SchemaProviderConfig {
         map.put("extractToTemporary", extractToTemporary);
         map.put("validateJar", validateJar);
         map.put("dialect", dialect);
-        map.put("type", getType().name());
         return map;
     }
 

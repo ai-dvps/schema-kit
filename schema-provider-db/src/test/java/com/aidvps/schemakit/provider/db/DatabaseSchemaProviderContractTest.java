@@ -17,7 +17,7 @@ package com.aidvps.schemakit.provider.db;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.aidvps.druid.differ.internal.model.DatabasePlatform;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
 import java.sql.Connection;
@@ -46,13 +46,13 @@ class DatabaseSchemaProviderContractTest {
     }
 
     @Test
-    @DisplayName("Should return correct provider type")
-    void testGetType() {
+    @DisplayName("Should return correct provider ID")
+    void testGetProviderId() {
         // Act
-        ProviderType type = provider.getType();
+        String providerId = provider.getProviderId();
 
         // Assert
-        assertEquals(ProviderType.DATABASE, type);
+        assertEquals(BuiltInProviders.DATABASE, providerId);
     }
 
     @Test

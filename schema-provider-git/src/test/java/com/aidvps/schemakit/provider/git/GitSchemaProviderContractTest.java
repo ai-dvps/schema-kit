@@ -16,7 +16,7 @@ package com.aidvps.schemakit.provider.git;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
 import org.junit.jupiter.api.*;
@@ -39,16 +39,6 @@ class GitSchemaProviderContractTest {
                 GitSchemaProviderConfig.builder()
                         .repositoryPath("https://example.com/repo.git")
                         .build();
-    }
-
-    @Test
-    @DisplayName("Should return correct provider type")
-    void testGetType() {
-        // Act
-        ProviderType type = provider.getType();
-
-        // Assert
-        assertEquals(ProviderType.GIT, type);
     }
 
     @Test

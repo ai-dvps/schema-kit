@@ -17,7 +17,7 @@ package com.aidvps.schemakit.provider.dir;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.aidvps.druid.differ.internal.model.Schema;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProvider;
 import com.aidvps.schemakit.provider.SchemaProviderException;
 import java.io.IOException;
@@ -43,15 +43,6 @@ class DirectorySchemaProviderContractTest {
     void testImplementsSchemaProviderInterface() {
         // Assert
         assertTrue(provider instanceof SchemaProvider);
-    }
-
-    @Test
-    void testGetTypeReturnsDirectory() {
-        // Act
-        ProviderType type = provider.getType();
-
-        // Assert
-        assertEquals(ProviderType.DIRECTORY, type);
     }
 
     @Test

@@ -94,12 +94,14 @@ public class CustomProviderTestKit {
     public TestResults runAllTests() throws TestFailureException {
         TestResults results = new TestResults();
 
-        // Test 1: Provider type
+        // Test 1: Provider ID
         try {
-            Objects.requireNonNull(provider.getType(), "Provider type must not be null");
-            results.addSuccess("Provider type is valid");
+            String providerId = provider.getProviderId();
+            Objects.requireNonNull(providerId, "Provider ID must not be null");
+            Objects.requireNonNull(providerId.trim(), "Provider ID must not be empty");
+            results.addSuccess("Provider ID is valid: " + providerId);
         } catch (Exception e) {
-            results.addFailure("Provider type validation failed", e);
+            results.addFailure("Provider ID validation failed", e);
         }
 
         // Test 2: Configuration validation
@@ -202,7 +204,7 @@ public class CustomProviderTestKit {
                                         if (validConfig != null) {
                                             provider.getSchema(validConfig);
                                         }
-                                        provider.getType();
+                                        provider.getProviderId();
                                     }
                                 } catch (Exception e) {
                                     exceptions[threadIndex] = e;

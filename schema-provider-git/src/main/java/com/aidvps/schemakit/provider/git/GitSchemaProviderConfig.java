@@ -15,7 +15,6 @@
 package com.aidvps.schemakit.provider.git;
 
 import com.aidvps.druid.differ.DatabaseDialect;
-import com.aidvps.schemakit.provider.ProviderType;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,10 +51,6 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
      */
     public static Builder builder() {
         return new Builder();
-    }
-
-    public ProviderType getType() {
-        return ProviderType.GIT;
     }
 
     /**
@@ -140,7 +135,6 @@ public class GitSchemaProviderConfig implements SchemaProviderConfig {
         map.put("credentials", credentials);
         map.put("cloneToTemporary", cloneToTemporary);
         map.put("dialect", dialect);
-        map.put("type", getType().name());
         return map;
     }
 

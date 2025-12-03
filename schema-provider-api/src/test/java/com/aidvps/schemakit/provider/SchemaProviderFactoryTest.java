@@ -28,31 +28,26 @@ class SchemaProviderFactoryTest {
 
     @BeforeEach
     void setUp() {
-        // Clear any previously registered providers
-        try {
-            java.lang.reflect.Field field =
-                    SchemaProviderFactory.class.getDeclaredField("providers");
-            field.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            java.util.Map<ProviderType, SchemaProvider> providers =
-                    (java.util.Map<ProviderType, SchemaProvider>) field.get(null);
-            providers.clear();
-        } catch (Exception e) {
-            // Ignore if reflection fails
-        }
+        // Reinitialize factory to clear all registered providers
+        // This is needed because the factory auto-discovers providers via SPI
+        SchemaProviderFactory.reinitialize();
 
         mockProvider1 = mock(SchemaProvider.class);
         mockProvider2 = mock(SchemaProvider.class);
+
+        // Set up default behavior for mocks
+        when(mockProvider1.getProviderId()).thenReturn("mock-provider-1");
+        when(mockProvider2.getProviderId()).thenReturn("mock-provider-2");
     }
 
     @Test
     void testRegisterAndCreateProvider() {
         // Arrange
-        when(mockProvider1.getType()).thenReturn(ProviderType.DIRECTORY);
+        when(mockProvider1.getProviderId()).thenReturn("test-provider-1");
 
         // Act
-        SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, mockProvider1);
-        SchemaProvider result = SchemaProviderFactory.createProvider(ProviderType.DIRECTORY);
+        SchemaProviderFactory.registerProvider("test-provider-1", mockProvider1);
+        SchemaProvider result = SchemaProviderFactory.createProvider("test-provider-1");
 
         // Assert
         assertNotNull(result);
@@ -65,9 +60,9 @@ class SchemaProviderFactoryTest {
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
-                        () -> SchemaProviderFactory.createProvider(null));
+                        () -> SchemaProviderFactory.createProvider((String) null));
 
-        assertEquals("Provider type must not be null", exception.getMessage());
+        assertEquals("Provider ID must not be null or empty", exception.getMessage());
     }
 
     @Test
@@ -76,25 +71,26 @@ class SchemaProviderFactoryTest {
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
-                        () -> SchemaProviderFactory.createProvider(ProviderType.DIRECTORY));
+                        () -> SchemaProviderFactory.createProvider("test-provider-unknown"));
 
-        assertTrue(exception.getMessage().contains("Provider type not supported"));
-        assertTrue(exception.getMessage().contains("DIRECTORY"));
+        assertTrue(exception.getMessage().contains("Provider not found with ID"));
+        assertTrue(exception.getMessage().contains("test-provider-unknown"));
     }
 
     @Test
     void testCreateProviderThrowsForUnregisteredTypeCustom() {
         // Arrange
-        SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, mockProvider1);
+        when(mockProvider1.getProviderId()).thenReturn("test-provider-custom");
+        SchemaProviderFactory.registerProvider("test-provider-custom", mockProvider1);
 
         // Act & Assert
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
-                        () -> SchemaProviderFactory.createProvider(ProviderType.CUSTOM));
+                        () -> SchemaProviderFactory.createProvider("test-provider-unknown"));
 
-        assertTrue(exception.getMessage().contains("Provider type not supported"));
-        assertTrue(exception.getMessage().contains("CUSTOM"));
+        assertTrue(exception.getMessage().contains("Provider not found with ID"));
+        assertTrue(exception.getMessage().contains("test-provider-unknown"));
     }
 
     @Test
@@ -103,9 +99,9 @@ class SchemaProviderFactoryTest {
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
-                        () -> SchemaProviderFactory.registerProvider(null, mockProvider1));
+                        () -> SchemaProviderFactory.registerProvider((String) null, mockProvider1));
 
-        assertEquals("Provider type must not be null", exception.getMessage());
+        assertEquals("Provider ID must not be null or empty", exception.getMessage());
     }
 
     @Test
@@ -114,7 +110,7 @@ class SchemaProviderFactoryTest {
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
-                        () -> SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, null));
+                        () -> SchemaProviderFactory.registerProvider("test-provider", null));
 
         assertEquals("Provider must not be null", exception.getMessage());
     }
@@ -123,24 +119,28 @@ class SchemaProviderFactoryTest {
     void testRegisterProviderOverridesExistingProvider() {
         // Arrange
         SchemaProvider newProvider = mock(SchemaProvider.class);
-        SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, mockProvider1);
-        SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, newProvider);
+        when(newProvider.getProviderId()).thenReturn("new-mock-provider");
+
+        SchemaProviderFactory.registerProvider("test-provider-1", mockProvider1);
+        SchemaProviderFactory.registerProvider("test-provider-2", newProvider);
 
         // Act
-        SchemaProvider result = SchemaProviderFactory.createProvider(ProviderType.DIRECTORY);
+        SchemaProvider result1 = SchemaProviderFactory.createProvider("test-provider-1");
+        SchemaProvider result2 = SchemaProviderFactory.createProvider("test-provider-2");
 
         // Assert
-        assertEquals(newProvider, result);
-        assertNotEquals(mockProvider1, result);
+        assertEquals(mockProvider1, result1);
+        assertEquals(newProvider, result2);
+        assertNotEquals(result1, result2);
     }
 
     @Test
     void testIsProviderRegisteredReturnsTrueForRegistered() {
         // Arrange
-        SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, mockProvider1);
+        SchemaProviderFactory.registerProvider("test-provider", mockProvider1);
 
         // Act
-        boolean result = SchemaProviderFactory.isProviderRegistered(ProviderType.DIRECTORY);
+        boolean result = SchemaProviderFactory.isProviderRegistered("test-provider");
 
         // Assert
         assertTrue(result);
@@ -149,7 +149,7 @@ class SchemaProviderFactoryTest {
     @Test
     void testIsProviderRegisteredReturnsFalseForUnregistered() {
         // Act
-        boolean result = SchemaProviderFactory.isProviderRegistered(ProviderType.DIRECTORY);
+        boolean result = SchemaProviderFactory.isProviderRegistered("test-provider-unknown");
 
         // Assert
         assertFalse(result);
@@ -157,8 +157,8 @@ class SchemaProviderFactoryTest {
 
     @Test
     void testIsProviderRegisteredReturnsFalseForNull() {
-        // Act
-        boolean result = SchemaProviderFactory.isProviderRegistered(null);
+        // Act - test with null provider ID
+        boolean result = SchemaProviderFactory.isProviderRegistered((String) null);
 
         // Assert
         assertFalse(result);
@@ -171,20 +171,19 @@ class SchemaProviderFactoryTest {
         SchemaProvider databaseProvider = mock(SchemaProvider.class);
         SchemaProvider gitProvider = mock(SchemaProvider.class);
 
-        when(directoryProvider.getType()).thenReturn(ProviderType.DIRECTORY);
-        when(databaseProvider.getType()).thenReturn(ProviderType.DATABASE);
-        when(gitProvider.getType()).thenReturn(ProviderType.GIT);
+        when(directoryProvider.getProviderId()).thenReturn("test-directory");
+        when(databaseProvider.getProviderId()).thenReturn("test-database");
+        when(gitProvider.getProviderId()).thenReturn("test-git");
 
         // Act
-        SchemaProviderFactory.registerProvider(ProviderType.DIRECTORY, directoryProvider);
-        SchemaProviderFactory.registerProvider(ProviderType.DATABASE, databaseProvider);
-        SchemaProviderFactory.registerProvider(ProviderType.GIT, gitProvider);
+        SchemaProviderFactory.registerProvider("test-directory", directoryProvider);
+        SchemaProviderFactory.registerProvider("test-database", databaseProvider);
+        SchemaProviderFactory.registerProvider("test-git", gitProvider);
 
         // Assert
-        assertEquals(
-                directoryProvider, SchemaProviderFactory.createProvider(ProviderType.DIRECTORY));
-        assertEquals(databaseProvider, SchemaProviderFactory.createProvider(ProviderType.DATABASE));
-        assertEquals(gitProvider, SchemaProviderFactory.createProvider(ProviderType.GIT));
+        assertEquals(directoryProvider, SchemaProviderFactory.createProvider("test-directory"));
+        assertEquals(databaseProvider, SchemaProviderFactory.createProvider("test-database"));
+        assertEquals(gitProvider, SchemaProviderFactory.createProvider("test-git"));
     }
 
     @Test

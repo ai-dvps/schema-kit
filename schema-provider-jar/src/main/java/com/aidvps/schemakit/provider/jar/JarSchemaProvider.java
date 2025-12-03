@@ -16,7 +16,7 @@ package com.aidvps.schemakit.provider.jar;
 
 import com.aidvps.druid.differ.DatabaseDialect;
 import com.aidvps.druid.differ.internal.model.Schema;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProvider;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import com.aidvps.schemakit.provider.SchemaProviderException;
@@ -44,8 +44,8 @@ public class JarSchemaProvider implements SchemaProvider {
     }
 
     @Override
-    public ProviderType getType() {
-        return ProviderType.JAR;
+    public String getProviderId() {
+        return BuiltInProviders.JAR;
     }
 
     @Override

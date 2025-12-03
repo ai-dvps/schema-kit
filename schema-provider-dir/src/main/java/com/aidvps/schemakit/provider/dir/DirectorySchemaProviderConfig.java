@@ -15,7 +15,7 @@
 package com.aidvps.schemakit.provider.dir;
 
 import com.aidvps.druid.differ.DatabaseDialect;
-import com.aidvps.schemakit.provider.ProviderType;
+import com.aidvps.schemakit.provider.BuiltInProviders;
 import com.aidvps.schemakit.provider.SchemaProviderConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,8 +40,8 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
         return new Builder();
     }
 
-    public ProviderType getType() {
-        return ProviderType.DIRECTORY;
+    public String getProviderId() {
+        return BuiltInProviders.DIRECTORY;
     }
 
     public String getDirectoryPath() {
@@ -88,7 +88,6 @@ public class DirectorySchemaProviderConfig implements SchemaProviderConfig {
         map.put("validateStructure", validateStructure);
         map.put("followSymlinks", followSymlinks);
         map.put("dialect", dialect);
-        map.put("type", getType().name());
         return map;
     }
 
