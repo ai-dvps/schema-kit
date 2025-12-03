@@ -16,7 +16,14 @@ package com.aidvps.schemakit.provider.git;
 
 import com.aidvps.schemakit.provider.SchemaProviderException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.regex.Pattern;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 
 /**
  * Resolves git references (branches, tags, commits) to concrete commit hashes.
@@ -61,7 +68,7 @@ public class GitReferenceResolver {
         try {
             switch (type) {
                 case COMMIT_HASH:
-                    return resolveCommitHash(trimmedRef);
+                    return resolveCommitHash(repositoryPath, trimmedRef);
                 case BRANCH:
                     return resolveBranch(repositoryPath, trimmedRef);
                 case TAG:
@@ -71,6 +78,9 @@ public class GitReferenceResolver {
                             SchemaProviderException.ErrorCode.CONFIG_INVALID,
                             "Unknown reference type: " + type);
             }
+        } catch (IllegalArgumentException | SchemaProviderException e) {
+            // Re-throw validation and configuration exceptions as-is
+            throw e;
         } catch (Exception e) {
             throw new SchemaProviderException(
                     SchemaProviderException.ErrorCode.SOURCE_INACCESSIBLE,
@@ -134,10 +144,20 @@ public class GitReferenceResolver {
     /**
      * Resolve a commit hash (already in hash form).
      *
+     * @param repositoryPath Path to the repository
      * @param commitHash Commit hash to validate
      * @return The validated commit hash
      */
-    private String resolveCommitHash(String commitHash) {
+    private String resolveCommitHash(String repositoryPath, String commitHash) {
+        if (repositoryPath == null || repositoryPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("Repository path must not be null or empty");
+        }
+
+        Path path = Paths.get(repositoryPath);
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("Repository path does not exist: " + repositoryPath);
+        }
+
         // Validate format
         if (!isValidCommitHash(commitHash)) {
             throw new IllegalArgumentException("Invalid commit hash format: " + commitHash);
@@ -154,30 +174,45 @@ public class GitReferenceResolver {
      * @throws IOException if resolution fails
      */
     private String resolveBranch(String repositoryPath, String branch) throws IOException {
-        // Execute git command to resolve branch to commit hash
-        // Try: git rev-parse {branch} or git rev-parse origin/{branch}
-
         if (repositoryPath == null || repositoryPath.trim().isEmpty()) {
             throw new IOException("Repository path must not be null or empty");
         }
 
-        try {
-            // First try local branch
-            String result = executeGitCommand(repositoryPath, "rev-parse", branch);
-            if (isValidCommitHash(result.trim())) {
-                return result.trim().toLowerCase();
+        Path path = Paths.get(repositoryPath);
+        if (!Files.exists(path)) {
+            throw new IOException("Repository path does not exist: " + repositoryPath);
+        }
+
+        try (Git git = Git.open(path.toFile())) {
+            Repository repository = git.getRepository();
+
+            // Try local branch first
+            String branchRefName = "refs/heads/" + branch;
+            Ref branchRef = repository.findRef(branchRefName);
+
+            if (branchRef != null) {
+                ObjectId objectId = branchRef.getObjectId();
+                if (objectId != null) {
+                    return objectId.getName();
+                }
             }
 
-            // Try remote branch if local not found
-            result = executeGitCommand(repositoryPath, "rev-parse", "origin/" + branch);
-            if (isValidCommitHash(result.trim())) {
-                return result.trim().toLowerCase();
+            // Try remote branch
+            String remoteBranchRefName = "refs/remotes/origin/" + branch;
+            Ref remoteBranchRef = repository.findRef(remoteBranchRefName);
+
+            if (remoteBranchRef != null) {
+                ObjectId objectId = remoteBranchRef.getObjectId();
+                if (objectId != null) {
+                    return objectId.getName();
+                }
             }
 
             throw new IOException("Branch not found: " + branch);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Git command interrupted while resolving branch: " + branch, e);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Failed to resolve branch: " + branch, e);
         }
     }
 
@@ -190,71 +225,34 @@ public class GitReferenceResolver {
      * @throws IOException if resolution fails
      */
     private String resolveTag(String repositoryPath, String tag) throws IOException {
-        // Execute git command to resolve tag to commit hash
-        // git rev-parse {tag}
-
         if (repositoryPath == null || repositoryPath.trim().isEmpty()) {
             throw new IOException("Repository path must not be null or empty");
         }
 
-        try {
-            String result = executeGitCommand(repositoryPath, "rev-parse", tag);
-            if (isValidCommitHash(result.trim())) {
-                return result.trim().toLowerCase();
-            }
-            throw new IOException("Tag not found: " + tag);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Git command interrupted while resolving tag: " + tag, e);
-        }
-    }
-
-    /**
-     * Execute a git command and return the output.
-     *
-     * @param repositoryPath Path to the repository
-     * @param command Git command arguments
-     * @return Command output
-     * @throws IOException if command fails
-     * @throws InterruptedException if interrupted
-     */
-    private String executeGitCommand(String repositoryPath, String... command)
-            throws IOException, InterruptedException {
-        String[] fullCommand = new String[command.length + 1];
-        fullCommand[0] = "git";
-        System.arraycopy(command, 0, fullCommand, 1, command.length);
-
-        Process process =
-                Runtime.getRuntime().exec(fullCommand, null, new java.io.File(repositoryPath));
-
-        // Read output
-        StringBuilder output = new StringBuilder();
-        try (java.io.BufferedReader reader =
-                new java.io.BufferedReader(
-                        new java.io.InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
+        Path path = Paths.get(repositoryPath);
+        if (!Files.exists(path)) {
+            throw new IOException("Repository path does not exist: " + repositoryPath);
         }
 
-        // Check for errors
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            StringBuilder errorOutput = new StringBuilder();
-            try (java.io.BufferedReader errorReader =
-                    new java.io.BufferedReader(
-                            new java.io.InputStreamReader(process.getErrorStream()))) {
-                String errorLine;
-                while ((errorLine = errorReader.readLine()) != null) {
-                    errorOutput.append(errorLine).append("\n");
+        try (Git git = Git.open(path.toFile())) {
+            Repository repository = git.getRepository();
+
+            String tagRefName = "refs/tags/" + tag;
+            Ref tagRef = repository.findRef(tagRefName);
+
+            if (tagRef != null) {
+                ObjectId objectId = tagRef.getObjectId();
+                if (objectId != null) {
+                    return objectId.getName();
                 }
             }
-            throw new IOException(
-                    "Git command failed with exit code " + exitCode + ": " + errorOutput);
-        }
 
-        return output.toString();
+            throw new IOException("Tag not found: " + tag);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Failed to resolve tag: " + tag, e);
+        }
     }
 
     /** Enum representing different types of git references. */
