@@ -1,16 +1,17 @@
 # Quick Start Guide: Schema Provider System
 
-**Version**: 1.0.0 | **Date**: 2025-12-01 | **Module**: Multi-module Gradle Project
+**Version**: 1.1.0 | **Date**: 2025-12-04 | **Module**: Multi-module Gradle Project
 
 ## Overview
 
-This guide helps you get started with the Schema Provider System, a multi-source database schema comparison and migration generation tool supporting 5 source types and 4 database platforms.
+This guide helps you get started with the Schema Provider System, a multi-source database schema comparison and migration generation tool supporting 5 source types and 4 database platforms with SPI-based architecture.
 
 ## Prerequisites
 
 - Java 8 or higher
 - Gradle 7.0 or higher
 - Git (for git-based providers)
+- Docker (for Testcontainers integration tests)
 
 ## Project Structure
 
@@ -21,26 +22,42 @@ schema-kit-v2/
 ├── build.gradle                          # Root build configuration
 ├── settings.gradle                       # Module declarations
 │
-├── schema-core/                          # Core schema model
-│   └── src/main/java/...
+├── schema-core/                          # Core schema model & differ engine
+│   └── src/main/java/com/aidvps/druid/differ/
+│       ├── internal/model/               # Schema, Database, Table models
+│       └── differ/                       # Schema comparison engine
 │
-├── schema-provider-api/                  # Provider interfaces
-│   └── src/main/java/...
+├── schema-provider-api/                  # Provider interfaces & SPI
+│   └── src/main/java/com/aidvps/schemakit/provider/
+│       ├── SchemaProvider.java           # Core provider interface
+│       ├── SchemaProviderFactory.java    # SPI-based factory
+│       ├── SchemaProviderConfig.java     # Base configuration
+│       └── BuiltInProviders.java         # Provider ID constants
 │
-├── schema-provider-dir/                  # Directory provider (P1)
-│   └── src/main/java/...
+├── schema-provider-dir/                  # Directory-based provider
+│   └── src/main/java/com/aidvps/schemakit/provider/dir/
+│       ├── DirectorySchemaProvider.java
+│       ├── DirectorySchemaProviderConfig.java
+│       └── parsers/
 │
-├── schema-provider-db/                   # Database provider (P2)
-│   └── src/main/java/...
+├── schema-provider-db/                   # Live database provider
+│   └── src/main/java/com/aidvps/schemakit/provider/db/
+│       ├── DatabaseSchemaProvider.java
+│       ├── DatabaseSchemaProviderConfig.java
+│       └── introspector/                 # MySQL, PostgreSQL, MariaDB, SQLite
 │
-├── schema-provider-git/                  # Git provider (P3)
-│   └── src/main/java/...
+├── schema-provider-git/                  # Git repository provider
+│   └── src/main/java/com/aidvps/schemakit/provider/git/
+│       ├── GitSchemaProvider.java
+│       └── GitSchemaProviderConfig.java
 │
-├── schema-provider-jar/                  # JAR provider (P4)
-│   └── src/main/java/...
+├── schema-provider-jar/                  # JAR-embedded provider
+│   └── src/main/java/com/aidvps/schemakit/provider/jar/
+│       ├── JarSchemaProvider.java
+│       └── JarSchemaProviderConfig.java
 │
-└── schema-migrator/                      # Migration generator
-    └── src/main/java/...
+└── schema-migrator/                      # Migration generation engine
+    └── src/main/java/com/aidvps/schemakit/migrator/
 ```
 
 ## Setup
@@ -53,6 +70,9 @@ schema-kit-v2/
 
 # Or for a specific module
 ./gradlew :schema-core:build
+
+# Run tests (including Testcontainers integration tests)
+./gradlew test
 ```
 
 ### 2. Add Dependencies
@@ -61,10 +81,10 @@ If using as a library in another project:
 
 ```gradle
 dependencies {
-    implementation 'com.aidvps.schemakit:schema-core:1.0.0'
-    implementation 'com.aidvps.schemakit:schema-provider-api:1.0.0'
-    implementation 'com.aidvps.schemakit:schema-provider-dir:1.0.0'
-    implementation 'com.aidvps.schemakit:schema-migrator:1.0.0'
+    implementation 'com.aidvps.schemakit:schema-core:1.1.0'
+    implementation 'com.aidvps.schemakit:schema-provider-api:1.1.0'
+    implementation 'com.aidvps.schemakit:schema-provider-dir:1.1.0'
+    implementation 'com.aidvps.schemakit:schema-migrator:1.1.0'
 }
 ```
 
@@ -78,43 +98,37 @@ Compare schemas from two directories and generate migration SQL.
 
 ```java
 import com.aidvps.schemakit.provider.*;
-import com.aidvps.schemakit.migrator.*;
+import com.aidvps.schemakit.provider.dir.*;
+import com.aidvps.druid.differ.internal.model.*;
+import java.nio.file.Paths;
 
-// Create directory providers
-SchemaProvider sourceProvider = SchemaProviderFactory.createProvider(ProviderType.DIRECTORY);
-SchemaProvider targetProvider = SchemaProviderFactory.createProvider(ProviderType.DIRECTORY);
+// Create directory provider
+SchemaProvider provider = SchemaProviderFactory.createProvider("directory");
 
-// Configure source
+// Configure source schema
 DirectorySchemaProviderConfig sourceConfig = DirectorySchemaProviderConfig.builder()
-    .path(Paths.get("schemas/v1.0"))
+    .directoryPath("schemas/v1.0")
     .validateStructure(true)
-    .encoding("UTF-8")
     .build();
 
-// Configure target
+// Configure target schema
 DirectorySchemaProviderConfig targetConfig = DirectorySchemaProviderConfig.builder()
-    .path(Paths.get("schemas/v2.0"))
+    .directoryPath("schemas/v2.0")
     .validateStructure(true)
-    .encoding("UTF-8")
     .build();
 
 // Get schemas
-Schema sourceSchema = sourceProvider.getSchema(sourceConfig);
-Schema targetSchema = targetProvider.getSchema(targetConfig);
+Schema sourceSchema = provider.getSchema(sourceConfig);
+Schema targetSchema = provider.getSchema(targetConfig);
 
-// Generate migration
-SchemaMigrator migrator = new DefaultSchemaMigrator();
-MigrationConfig config = MigrationConfig.builder()
-    .targetPlatform(DatabasePlatform.MYSQL)
-    .mode(MigrationMode.FULL)
-    .includeDrops(true)
-    .transactional(true)
-    .build();
+// Compare schemas
+System.out.println("Source tables: " + sourceSchema.getTableCount());
+System.out.println("Target tables: " + targetSchema.getTableCount());
 
-MigrationScript migration = migrator.generateMigration(sourceSchema, targetSchema, config);
-
-// Print SQL
-System.out.println(migration.toFormattedSql());
+// Check for specific tables
+if (targetSchema.hasTable("products")) {
+    System.out.println("Products table exists in target");
+}
 ```
 
 ### Example 2: Live Database Comparison
@@ -123,45 +137,47 @@ Compare production database with desired state from files.
 
 ```java
 import com.aidvps.schemakit.provider.*;
-import com.aidvps.schemakit.migrator.*;
-import javax.sql.DataSource;
+import com.aidvps.schemakit.provider.db.*;
+import com.aidvps.schemakit.provider.dir.*;
+import com.aidvps.druid.differ.internal.model.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
 
 // Create providers
-SchemaProvider prodProvider = SchemaProviderFactory.createProvider(ProviderType.DATABASE);
-SchemaProvider fileProvider = SchemaProviderFactory.createProvider(ProviderType.DIRECTORY);
+SchemaProvider dbProvider = SchemaProviderFactory.createProvider("database");
+SchemaProvider fileProvider = SchemaProviderFactory.createProvider("directory");
 
-// Configure production database
+// Configure production database connection
+Connection prodConnection = DriverManager.getConnection(
+    "jdbc:mysql://localhost:3306/production", "user", "password");
+
 DatabaseSchemaProviderConfig prodConfig = DatabaseSchemaProviderConfig.builder()
-    .dataSource(productionDataSource)
-    .includeDatabases("production_db")
-    .credentialProvider(new EnvironmentVariableSecretProvider())
+    .connection(prodConnection)
+    .platform(DatabasePlatform.MYSQL)
     .build();
 
 // Configure file-based desired state
 DirectorySchemaProviderConfig desiredConfig = DirectorySchemaProviderConfig.builder()
-    .path(Paths.get("desired-state/schemas"))
+    .directoryPath("desired-state/schemas")
     .validateStructure(true)
     .build();
 
 // Get schemas
-Schema prodSchema = prodProvider.getSchema(prodConfig);
+Schema prodSchema = dbProvider.getSchema(prodConfig);
 Schema desiredSchema = fileProvider.getSchema(desiredConfig);
 
 // Compare
-SchemaMigrator migrator = new DefaultSchemaMigrator();
-SchemaDiff diff = migrator.compare(prodSchema, desiredSchema);
+System.out.println("Production databases: " + prodSchema.getDatabaseCount());
+System.out.println("Desired databases: " + desiredSchema.getDatabaseCount());
 
-if (diff.hasChanges()) {
-    System.out.println("Schema changes detected:");
-    diff.getChanges().forEach(change -> {
-        System.out.println("  " + change.getType() + ": " + change.getDescription());
-    });
-
-    // Generate migration
-    MigrationScript migration = migrator.generateMigration(prodSchema, desiredSchema, config);
-    System.out.println("\nMigration SQL:");
-    System.out.println(migration.toSql());
+// Access specific database
+if (prodSchema.hasDatabase("production_db")) {
+    Database db = prodSchema.getDatabase("production_db");
+    System.out.println("Production tables: " + db.getTableCount());
 }
+
+// Close connection
+prodConnection.close();
 ```
 
 ### Example 3: Git Repository Migration
@@ -169,44 +185,40 @@ if (diff.hasChanges()) {
 Compare schemas between git branches.
 
 ```java
+import com.aidvps.schemakit.provider.*;
+import com.aidvps.schemakit.provider.git.*;
+import com.aidvps.druid.differ.internal.model.*;
+import java.nio.file.Paths;
+
 // Create git provider
-SchemaProvider gitProvider = SchemaProviderFactory.createProvider(ProviderType.GIT);
+SchemaProvider gitProvider = SchemaProviderFactory.createProvider("git");
 
 // Configure main branch (current)
 GitSchemaProviderConfig mainConfig = GitSchemaProviderConfig.builder()
-    .repositoryUrl("https://github.com/company/database-schemas.git")
-    .reference("main")
-    .credentials(GitCredentials.builder()
-        .username("deploy-user")
-        .password(System.getenv("GIT_TOKEN"))
-        .build())
+    .repositoryPath("https://github.com/company/database-schemas.git")
+    .branch("main")
     .build();
 
 // Configure feature branch (desired)
 GitSchemaProviderConfig featureConfig = GitSchemaProviderConfig.builder()
-    .repositoryUrl("https://github.com/company/database-schemas.git")
+    .repositoryPath("https://github.com/company/database-schemas.git")
     .reference("feature/user-management")
-    .credentials(GitCredentials.builder()
-        .username("deploy-user")
-        .password(System.getenv("GIT_TOKEN"))
-        .build())
     .build();
 
 // Get schemas
 Schema mainSchema = gitProvider.getSchema(mainConfig);
 Schema featureSchema = gitProvider.getSchema(featureConfig);
 
-// Generate PostgreSQL migration
-MigrationConfig config = MigrationConfig.builder()
-    .targetPlatform(DatabasePlatform.POSTGRESQL)
-    .mode(MigrationMode.FORWARD_ONLY)
-    .includeDrops(false)
-    .build();
+// Compare
+System.out.println("Main branch tables: " + mainSchema.getTableCount());
+System.out.println("Feature branch tables: " + featureSchema.getTableCount());
 
-MigrationScript migration = migrator.generateMigration(mainSchema, featureSchema, config);
-
-// Write to file
-Files.write(Paths.get("migration.sql"), migration.toSql().getBytes());
+// Check for new tables in feature branch
+featureSchema.getDatabases().forEach(db -> {
+    if (!mainSchema.hasDatabase(db.getName())) {
+        System.out.println("New database: " + db.getName());
+    }
+});
 ```
 
 ### Example 4: JAR-Embedded Schema Comparison
@@ -214,36 +226,42 @@ Files.write(Paths.get("migration.sql"), migration.toSql().getBytes());
 Compare schemas packaged in JAR files.
 
 ```java
+import com.aidvps.schemakit.provider.*;
+import com.aidvps.schemakit.provider.jar.*;
+import com.aidvps.druid.differ.internal.model.*;
+
 // Create JAR provider
-SchemaProvider jarProvider = SchemaProviderFactory.createProvider(ProviderType.JAR);
+SchemaProvider jarProvider = SchemaProviderFactory.createProvider("jar");
 
 // Configure current version JAR
 JarSchemaProviderConfig currentConfig = JarSchemaProviderConfig.builder()
     .jarPath("schemas-current.jar")
-    .basePath("schemas/")
-    .classLoader(Thread.currentThread().getContextClassLoader())
+    .resourcePath("schemas/")
+    .extractToTemporary(true)
+    .validateJar(true)
     .build();
 
 // Configure new version JAR
 JarSchemaProviderConfig newConfig = JarSchemaProviderConfig.builder()
     .jarPath("schemas-v2.jar")
-    .basePath("schemas/")
-    .classLoader(Thread.currentThread().getContextClassLoader())
+    .resourcePath("schemas/")
+    .extractToTemporary(true)
+    .validateJar(true)
     .build();
 
 // Get schemas
 Schema currentSchema = jarProvider.getSchema(currentConfig);
 Schema newSchema = jarProvider.getSchema(newConfig);
 
-// Compare and generate migration
-SchemaMigrator migrator = new DefaultSchemaMigrator();
-MigrationConfig config = MigrationConfig.builder()
-    .targetPlatform(DatabasePlatform.SQLITE)
-    .mode(MigrationMode.FULL)
-    .includeDrops(true)
-    .build();
+// Compare
+System.out.println("Current JAR version tables: " + currentSchema.getTableCount());
+System.out.println("New JAR version tables: " + newSchema.getTableCount());
 
-MigrationScript migration = migrator.generateMigration(currentSchema, newSchema, config);
+// Access schema from JAR
+if (currentSchema.hasDatabase("appdb")) {
+    Database appdb = currentSchema.getDatabase("appdb");
+    System.out.println("Tables in appdb: " + appdb.getTableCount());
+}
 ```
 
 ### Example 5: Custom Provider Implementation
@@ -252,6 +270,7 @@ Create a provider for a cloud database service.
 
 ```java
 import com.aidvps.schemakit.provider.*;
+import com.aidvps.druid.differ.internal.model.*;
 
 public class CloudDatabaseProvider implements SchemaProvider {
     private final CloudDatabaseClient client;
@@ -275,15 +294,17 @@ public class CloudDatabaseProvider implements SchemaProvider {
     }
 
     @Override
-    public ProviderType getType() {
-        return ProviderType.CUSTOM;
+    public String getProviderId() {
+        return "cloud-database";
     }
 
     @Override
     public void validateConfig(SchemaProviderConfig config) throws SchemaProviderException {
         CloudDatabaseConfig cloudConfig = (CloudDatabaseConfig) config;
         if (cloudConfig.getInstanceId() == null) {
-            throw new ConfigValidationException("Instance ID required");
+            throw new SchemaProviderException(
+                SchemaProviderException.ErrorCode.CONFIG_INVALID,
+                "Instance ID required");
         }
     }
 }
@@ -292,10 +313,10 @@ public class CloudDatabaseProvider implements SchemaProvider {
 CloudDatabaseClient client = new CloudDatabaseClient("api-key");
 SchemaProvider customProvider = new CloudDatabaseProvider(client);
 
-SchemaProviderFactory.registerProvider(ProviderType.CUSTOM, customProvider);
+SchemaProviderFactory.registerProvider("cloud-database", customProvider);
 
 // Use it
-SchemaProvider provider = SchemaProviderFactory.createProvider(ProviderType.CUSTOM);
+SchemaProvider provider = SchemaProviderFactory.createProvider("cloud-database");
 Schema schema = provider.getSchema(cloudConfig);
 ```
 
@@ -348,9 +369,10 @@ CREATE TABLE users (
 
 ```java
 DirectorySchemaProviderConfig config = DirectorySchemaProviderConfig.builder()
-    .path(Paths.get("/path/to/schemas"))    // Required: Directory path
-    .validateStructure(true)                 // Optional: Validate file structure (default: true)
-    .encoding("UTF-8")                       // Optional: File encoding (default: UTF-8)
+    .directoryPath("/path/to/schemas")       // Required: Directory path (String)
+    .validateStructure(true)                 // Optional: Validate structure (default: true)
+    .followSymlinks(false)                   // Optional: Follow symlinks (default: false)
+    .dialect(DatabaseDialect.MYSQL)          // Optional: SQL dialect (default: MYSQL)
     .build();
 ```
 
@@ -358,10 +380,9 @@ DirectorySchemaProviderConfig config = DirectorySchemaProviderConfig.builder()
 
 ```java
 DatabaseSchemaProviderConfig config = DatabaseSchemaProviderConfig.builder()
-    .dataSource(dataSource)                  // Required: JDBC DataSource
-    .includeDatabases("db1", "db2")          // Optional: Include only these databases
-    .excludeDatabases("temp")                // Optional: Exclude these databases
-    .credentialProvider(provider)            // Optional: Secret provider
+    .connection(connection)                  // Required: JDBC Connection
+    .platform(DatabasePlatform.MYSQL)        // Required: Database platform
+    .jdbcUrl("jdbc:mysql://...")             // Optional: JDBC URL
     .build();
 ```
 
@@ -369,10 +390,12 @@ DatabaseSchemaProviderConfig config = DatabaseSchemaProviderConfig.builder()
 
 ```java
 GitSchemaProviderConfig config = GitSchemaProviderConfig.builder()
-    .repositoryUrl("https://...")            // Required: Git URL
-    .reference("main")                       // Required: Branch, tag, or commit
-    .localPath(Paths.get("/tmp/repo"))       // Optional: Local checkout path
-    .credentials(creds)                      // Optional: Authentication
+    .repositoryPath("https://...")           // Required: Git URL or local path
+    .branch("main")                          // Optional: Branch name (default: "main")
+    .reference("v1.0")                       // Optional: Tag/commit (takes precedence over branch)
+    .credentials(creds)                      // Optional: GitCredentials
+    .cloneToTemporary(true)                  // Optional: Clone to temp (default: true)
+    .dialect(DatabaseDialect.MYSQL)          // Optional: SQL dialect (default: MYSQL)
     .build();
 ```
 
@@ -380,55 +403,28 @@ GitSchemaProviderConfig config = GitSchemaProviderConfig.builder()
 
 ```java
 JarSchemaProviderConfig config = JarSchemaProviderConfig.builder()
-    .jarPath("schemas.jar")                  // Required: JAR path or classpath pattern
-    .basePath("schemas/")                    // Optional: Base path in JAR (default: "")
-    .classLoader(cl)                         // Optional: ClassLoader (default: thread context)
+    .jarPath("schemas.jar")                  // Required: JAR path
+    .resourcePath("schemas/")                // Optional: Resource path in JAR (default: null)
+    .extractToTemporary(true)                // Optional: Extract to temp (default: true)
+    .validateJar(true)                       // Optional: Validate JAR (default: true)
+    .dialect(DatabaseDialect.MYSQL)          // Optional: SQL dialect (default: MYSQL)
     .build();
 ```
 
----
-
-## Migration Configuration
+### Provider Discovery
 
 ```java
-MigrationConfig config = MigrationConfig.builder()
-    .targetPlatform(DatabasePlatform.MYSQL)  // Required: Target platform
-    .mode(MigrationMode.FULL)                // Optional: FULL, FORWARD_ONLY, DIFF_ONLY
-    .includeDrops(true)                      // Optional: Include DROP statements (default: true)
-    .transactional(true)                     // Optional: Wrap in transactions (default: true)
-    .customGenerator(generator)              // Optional: Custom SQL generator
-    .build();
-```
+// List all registered providers
+Collection<String> providerIds = SchemaProviderFactory.getRegisteredProviderIds();
+System.out.println("Available providers: " + providerIds);
 
----
-
-## Credential Management
-
-### Environment Variables
-
-```java
-SecretProvider provider = new EnvironmentVariableSecretProvider();
-
-// Use in database config
-String dbPassword = provider.getSecret("DB_PASSWORD");
-```
-
-### Custom Secret Manager
-
-```java
-public class VaultSecretProvider implements SecretProvider {
-    private final VaultClient vault;
-
-    @Override
-    public String getSecret(String key) {
-        return vault.read("secret/" + key);
-    }
-
-    @Override
-    public boolean hasSecret(String key) {
-        return vault.exists("secret/" + key);
-    }
+// Check if provider exists
+if (SchemaProviderFactory.isProviderRegistered("database")) {
+    SchemaProvider provider = SchemaProviderFactory.createProvider("database");
 }
+
+// Register custom provider
+SchemaProviderFactory.registerProvider("my-custom", customProvider);
 ```
 
 ---
@@ -436,23 +432,44 @@ public class VaultSecretProvider implements SecretProvider {
 ## Error Handling
 
 ```java
+import com.aidvps.schemakit.provider.*;
+
 try {
-    SchemaProvider provider = SchemaProviderFactory.createProvider(ProviderType.DIRECTORY);
+    SchemaProvider provider = SchemaProviderFactory.createProvider("directory");
+    DirectorySchemaProviderConfig config = DirectorySchemaProviderConfig.builder()
+        .directoryPath("/path/to/schemas")
+        .build();
+
     Schema schema = provider.getSchema(config);
 } catch (SchemaProviderException e) {
     switch (e.getErrorCode()) {
+        case CONFIG_INVALID:
+            System.err.println("Invalid configuration: " + e.getMessage());
+            break;
         case SOURCE_NOT_FOUND:
             System.err.println("Schema source not found: " + e.getMessage());
+            break;
+        case SOURCE_INACCESSIBLE:
+            System.err.println("Cannot access schema source: " + e.getMessage());
             break;
         case PARSE_ERROR:
             System.err.println("Failed to parse schema: " + e.getMessage());
             break;
+        case VALIDATION_ERROR:
+            System.err.println("Schema validation failed: " + e.getMessage());
+            break;
         case AUTHENTICATION_FAILED:
             System.err.println("Authentication failed");
+            break;
+        case TIMEOUT:
+            System.err.println("Operation timed out");
             break;
         default:
             System.err.println("Unknown error: " + e.getMessage());
     }
+} catch (IllegalArgumentException e) {
+    // Thrown when provider ID is not found
+    System.err.println("Provider not found: " + e.getMessage());
 }
 ```
 
@@ -460,42 +477,88 @@ try {
 
 ## Best Practices
 
-### 1. Validation
+### 1. Provider Discovery
 
-Always enable structure validation during development:
+Check available providers before creating them:
+
+```java
+// List all registered providers
+Collection<String> providerIds = SchemaProviderFactory.getRegisteredProviderIds();
+System.out.println("Available providers: " + providerIds);
+
+// Use BuiltInProviders constants for built-in providers
+SchemaProvider dirProvider = SchemaProviderFactory.createProvider(BuiltInProviders.DIRECTORY);
+```
+
+### 2. Configuration Validation
+
+Always validate configuration before use:
 
 ```java
 DirectorySchemaProviderConfig config = DirectorySchemaProviderConfig.builder()
-    .path(path)
-    .validateStructure(true)  // Always validate in development
+    .directoryPath("/path/to/schemas")
+    .validateStructure(true)
     .build();
+
+// Validate early
+try {
+    config.validate();
+} catch (Exception e) {
+    System.err.println("Configuration invalid: " + e.getMessage());
+}
 ```
 
-### 2. Error Handling
+### 3. Error Handling
 
-Wrap provider calls in try-catch blocks and handle specific error codes.
-
-### 3. Resource Management
-
-Git providers create temporary directories - ensure cleanup:
+Use specific error codes for targeted handling:
 
 ```java
-try (GitRepository repo = GitRepository.clone(url, ref)) {
-    // Use repo
-} // Automatically cleaned up
+try {
+    Schema schema = provider.getSchema(config);
+} catch (SchemaProviderException e) {
+    switch (e.getErrorCode()) {
+        case SOURCE_NOT_FOUND:
+            // Handle missing source
+        case PARSE_ERROR:
+            // Handle SQL parsing errors
+        case AUTHENTICATION_FAILED:
+            // Handle auth errors
+    }
+}
 ```
 
-### 4. Performance
+### 4. Resource Management
 
-- Enable lazy loading for large schemas
-- Use connection pooling for database providers
-- Cache parsed schemas when possible
+Close database connections properly:
 
-### 5. Security
+```java
+Connection conn = null;
+try {
+    conn = DriverManager.getConnection(url, user, pass);
+    DatabaseSchemaProviderConfig config = DatabaseSchemaProviderConfig.builder()
+        .connection(conn)
+        .platform(DatabasePlatform.MYSQL)
+        .build();
+    Schema schema = provider.getSchema(config);
+} finally {
+    if (conn != null) {
+        conn.close();
+    }
+}
+```
 
-- Never log credentials
-- Use environment variables for sensitive data
-- Implement proper timeout handling
+### 5. Performance
+
+- Use temporary directory options for Git/JAR providers (enabled by default)
+- Enable validation only in development (disable in production for speed)
+- Use followSymlinks carefully (disabled by default for security)
+
+### 6. Security
+
+- Never log credentials or sensitive configuration
+- Use cloneToTemporary=true for Git providers (default)
+- Use extractToTemporary=true for JAR providers (default)
+- Validate JAR structure before processing
 
 ---
 
@@ -510,23 +573,44 @@ Run tests:
 # Specific module
 ./gradlew :schema-provider-dir:test
 
-# Integration tests
-./gradlew :schema-provider-db:integrationTest
+# With coverage report
+./gradlew jacocoTestReport
+
+# Clean and rebuild
+./gradlew clean build
 ```
 
-### Testcontainers
+### Testcontainers Integration Tests
 
 Integration tests use Testcontainers for real database testing:
 
 ```java
-@SpringBootTest
-class DatabaseProviderIntegrationTest {
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+@Testcontainers
+class MySQLIntegrationTest {
     @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0");
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+        .withDatabaseName("testdb")
+        .withUsername("testuser")
+        .withPassword("testpass");
 
     @Test
-    void testSchemaExtraction() {
-        // Test schema extraction from live MySQL
+    void testSchemaExtraction() throws Exception {
+        Connection conn = DriverManager.getConnection(
+            mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+
+        DatabaseSchemaProviderConfig config = DatabaseSchemaProviderConfig.builder()
+            .connection(conn)
+            .platform(DatabasePlatform.MYSQL)
+            .build();
+
+        SchemaProvider provider = SchemaProviderFactory.createProvider("database");
+        Schema schema = provider.getSchema(config);
+
+        conn.close();
     }
 }
 ```
@@ -535,52 +619,66 @@ class DatabaseProviderIntegrationTest {
 
 ## Troubleshooting
 
-### Issue: "Schema source not found"
+### Issue: "Provider not found with ID"
 
-**Solution**: Check path exists and is accessible:
+**Solution**: Check available provider IDs and ensure the provider module is on the classpath:
 ```java
-if (!Files.exists(path)) {
-    throw new SchemaProviderException("Directory not found: " + path);
-}
+// List all available providers
+Collection<String> providerIds = SchemaProviderFactory.getRegisteredProviderIds();
+System.out.println("Available providers: " + providerIds);
+
+// Verify module dependency
+// Ensure schema-provider-dir is included for directory provider
 ```
 
-### Issue: "Authentication failed"
+### Issue: "directoryPath must not be null or empty"
 
-**Solution**: Verify credentials:
+**Solution**: Always provide a valid directory path:
 ```java
-// Test credential retrieval
-try {
-    String password = provider.getSecret("DB_PASSWORD");
-    if (password == null) {
-        throw new ConfigValidationException("DB_PASSWORD not found in environment");
-    }
-} catch (SecretNotFoundException e) {
-    throw new ConfigValidationException("Missing secret: " + e.getKey());
-}
-```
-
-### Issue: "Parser error on SQL file"
-
-**Solution**: Validate SQL syntax:
-```java
-// Enable validation
 DirectorySchemaProviderConfig config = DirectorySchemaProviderConfig.builder()
-    .path(path)
-    .validateStructure(true)  // This validates SQL syntax
+    .directoryPath("/path/to/schemas")  // Must not be null or empty
     .build();
 ```
 
-### Issue: "Migration generation timeout"
+### Issue: "connection must not be null"
 
-**Solution**: Optimize schema size or increase timeout:
+**Solution**: Provide a valid JDBC connection:
 ```java
-// Use streaming for large schemas
-SchemaProvider provider = ...;
-try (SchemaStream stream = provider.streamSchema(config)) {
-    stream.forEach(schema -> {
-        // Process incrementally
-    });
-}
+Connection conn = DriverManager.getConnection(url, user, pass);
+DatabaseSchemaProviderConfig config = DatabaseSchemaProviderConfig.builder()
+    .connection(conn)  // Must provide a valid connection
+    .platform(DatabasePlatform.MYSQL)
+    .build();
+```
+
+### Issue: "repositoryPath must not be null or empty"
+
+**Solution**: Provide a valid Git repository URL or path:
+```java
+GitSchemaProviderConfig config = GitSchemaProviderConfig.builder()
+    .repositoryPath("https://github.com/user/repo.git")  // Required
+    .branch("main")
+    .build();
+```
+
+### Issue: "jarPath must not be null or empty"
+
+**Solution**: Provide a valid JAR path:
+```java
+JarSchemaProviderConfig config = JarSchemaProviderConfig.builder()
+    .jarPath("schemas.jar")  // Must not be null or empty
+    .build();
+```
+
+### Issue: Testcontainers tests failing
+
+**Solution**: Ensure Docker is running and available:
+```bash
+# Verify Docker is running
+docker ps
+
+# Check Testcontainers can connect
+# See: https://www.testcontainers.org/
 ```
 
 ---

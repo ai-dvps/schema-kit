@@ -1,10 +1,10 @@
 # Research: Schema Provider System Implementation
 
-**Date**: 2025-12-01 | **Feature**: Schema Provider System | **Status**: Complete
+**Date**: 2025-12-04 (Updated) | **Feature**: Schema Provider System | **Status**: ✅ Complete - Implementation Analyzed
 
 ## Research Summary
 
-This document consolidates research findings for implementing the schema provider system with multi-source support.
+This document consolidates research findings and implementation decisions for the Schema Provider System. The system is fully implemented with 7 modules, supporting 5 source types (directory, live database, git repository, JAR file, custom), 4 database platforms (MySQL, PostgreSQL, MariaDB, SQLite), comprehensive testing via Testcontainers, and SPI-based extensibility.
 
 ---
 
@@ -216,24 +216,253 @@ SchemaProvider dbProvider = DatabaseSchemaProvider.builder()
 
 ---
 
+## 11. SPI Implementation: SchemaProviderFactory
+
+**Decision**: ConcurrentHashMap-based provider registry with automatic registration
+
+**Implementation Details**:
+```java
+public class SchemaProviderFactory {
+    private static final Map<String, SchemaProvider> PROVIDERS = new ConcurrentHashMap<>();
+
+    public static void registerProvider(String id, SchemaProvider provider) {
+        // Thread-safe registration with duplicate validation
+    }
+
+    public static SchemaProvider createProvider(String id) {
+        return PROVIDERS.get(id);
+    }
+
+    // Automatic discovery via META-INF/services files
+    static {
+        ServiceLoader<SchemaProvider> loader = ServiceLoader.load(SchemaProvider.class);
+        loader.forEach(factory -> registerProvider(
+            factory.getProviderId(), factory));
+    }
+}
+```
+
+**Features**:
+- Thread-safe concurrent hashmap
+- Automatic registration on class load
+- Manual registration for custom providers
+- Duplicate ID detection
+- No synchronization required
+
+**SPI Registration** (META-INF/services/com.aidvps.schemakit.provider.SchemaProvider):
+```
+com.aidvps.schemakit.provider.dir.DirectorySchemaProvider
+com.aidvps.schemakit.provider.db.DatabaseSchemaProvider
+com.aidvps.schemakit.provider.git.GitSchemaProvider
+com.aidvps.schemakit.provider.jar.JarSchemaProvider
+```
+
+---
+
+## 12. Testing Organization: Multi-Layer Test Strategy
+
+**Decision**: 41 test files organized by module and test type
+
+**Test Structure by Module**:
+
+1. **schema-provider-api** (4 test files):
+   - Contract tests for provider API compliance
+   - Factory SPI registration tests
+   - Secret provider tests
+
+2. **schema-provider-dir** (3 test files):
+   - Contract validation tests
+   - File parsing integration tests
+   - End-to-end directory-to-migration flow
+
+3. **schema-provider-db** (5 test files):
+   - Contract tests
+   - MySQL integration (Testcontainers)
+   - PostgreSQL integration (Testcontainers)
+   - MariaDB integration (Testcontainers)
+   - SQLite integration (Testcontainers)
+
+4. **schema-provider-git** (5 test files):
+   - Contract validation
+   - Repository cloning behavior
+   - Branch checkout integration
+   - Commit reference handling
+   - Tag reference handling
+
+5. **schema-core** & **schema-migrator** (24+ test files):
+   - JMH performance benchmarks
+   - Schema comparison accuracy
+   - Migration generation tests
+   - Multi-dialect integration
+
+**Testing Technologies**:
+- JUnit 5.10.0 with platform runner
+- Mockito 4.11.0 for mocking
+- Testcontainers 1.19.2 for real databases
+- Jacoco 0.8.11 for coverage reporting
+- Spotless for code formatting (Google Java Format 1.7)
+
+**Test Patterns**:
+```java
+// Contract test pattern
+@ExtendWith(MockitoExtension.class)
+class DirectorySchemaProviderContractTest {
+    private DirectorySchemaProvider provider;
+
+    @Test
+    @DisplayName("Should load schema from valid directory structure")
+    void shouldLoadValidDirectory() {
+        // Test implementation
+    }
+}
+
+// Integration test pattern with Testcontainers
+@SpringBootTest
+class MySQLIntegrationTest {
+    @Container
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0");
+
+    @Test
+    void shouldExtractSchemaFromMySQL() {
+        // Test with real MySQL instance
+    }
+}
+```
+
+---
+
+## 13. Exception Hierarchy Design
+
+**Decision**: Centralized exception handling with error codes
+
+**Hierarchy**:
+```java
+SchemaProviderException (base)
+├── ConfigValidationException
+├── SourceNotFoundException
+├── AuthenticationException
+├── ParseException
+└── MigrationException
+```
+
+**Error Codes**:
+- SOURCE_NOT_FOUND: Path/URL doesn't exist
+- ACCESS_DENIED: Permission denied
+- INVALID_CONFIG: Missing required configuration
+- PARSE_ERROR: SQL parsing failure
+- AUTH_FAILED: Authentication failed
+- UNSUPPORTED_OPERATION: Feature not supported
+
+---
+
+## 14. Connection Pooling Strategy
+
+**Decision**: HikariCP 5.0.1 for all database connections
+
+**Rationale**:
+- Industry-standard connection pool
+- High performance (fastest in benchmarks)
+- Minimal dependencies
+- Java 8 compatible
+- Proper resource cleanup
+
+**Implementation**:
+```java
+HikariDataSource dataSource = new HikariDataSource();
+dataSource.setJdbcUrl(url);
+dataSource.setUsername(username);
+dataSource.setPassword(password);
+dataSource.setMaximumPoolSize(10);
+dataSource.setConnectionTimeout(30000);
+```
+
+---
+
+## 15. Platform-Specific Introspection Patterns
+
+**Decision**: Specialized introspectors per database platform
+
+**Implementation** (schema-provider-db module):
+```
+introspector/
+├── PlatformIntrospector.java         (base interface)
+├── MySQLIntrospector.java             (MySQL 5.7+, 8.0+)
+├── PostgreSQLIntrospector.java        (PostgreSQL 9.1+)
+├── MariaDBIntrospector.java           (MariaDB 10.0+)
+└── SQLiteIntrospector.java            (SQLite 3.x)
+```
+
+**Key Differences**:
+- MySQL: AUTO_INCREMENT, ENUM types, ENGINE clauses
+- PostgreSQL: SERIAL types, custom domains
+- MariaDB: Similar to MySQL with additional features
+- SQLite: No ALTER TABLE ADD COLUMN, no ALTER COLUMN
+
+---
+
 ## Technology Stack Summary
 
-| Category | Technology | Rationale |
-|----------|-----------|-----------|
-| Build Tool | Gradle | Already in use, multi-module support |
-| Language | Java 8 | Maintain compatibility with existing codebase |
-| SQL Parser | druid-parser | Already in dependencies, full DDL support |
-| Database Access | JDBC | Standard API, all target DBs supported |
-| Git Integration | JGit | Native Java, no native deps |
-| Testing | JUnit 5, Mockito, Testcontainers | Standard Java testing stack |
-| Credentials | Custom provider + env vars | Flexible, secure |
+| Category | Technology | Version | Rationale |
+|----------|-----------|---------|-----------|
+| Build Tool | Gradle | 7.x | Multi-module support, Java 8 toolchain |
+| Language | Java | 8 | Constitution requirement, source/target compatibility |
+| SQL Parser | druid-parser | 1.2.28-SNAPSHOT | Comprehensive DDL support, multi-dialect |
+| Git Integration | Eclipse JGit | 5.13.1.202206130422-r | Pure Java, no native dependencies |
+| Connection Pool | HikariCP | 5.0.1 | High performance, production-tested |
+| Testing | JUnit | 5.10.0 | Modern test framework with BOM |
+| Mocking | Mockito | 4.11.0 | Standard Java mocking framework |
+| Integration Tests | Testcontainers | 1.19.2 | Real database instances, Docker-based |
+| Code Coverage | JaCoCo | 0.8.11 | Gradle integration, HTML reports |
+| Code Formatting | Spotless | 5.17.0 | Google Java Format 1.7 |
 
 ---
 
 ## Risks and Mitigations
 
-1. **SQL Parsing Complexity**: Use proven druid-parser library
-2. **Database Dialect Differences**: Abstract dialect logic, extensive testing
-3. **Git Repository Size**: Implement size limits and cleanup
-4. **Credential Security**: Never log, use secure memory, clear after use
-5. **Performance at Scale**: Lazy loading, streaming for large schemas
+1. **SQL Parsing Complexity**: Use proven druid-parser library with comprehensive dialect support
+2. **Database Dialect Differences**: Abstract dialect logic via PlatformIntrospector hierarchy, extensive Testcontainers testing
+3. **Git Repository Size**: Implement size limits, shallow clones, automatic cleanup of temporary repositories
+4. **Credential Security**: EnvironmentVariableSecretProvider interface, never log credentials, secure memory handling
+5. **Performance at Scale**: Lazy loading, streaming for large schemas, bounded memory by schema size
+6. **Multi-Platform Testing**: Testcontainers ensures compatibility across MySQL, PostgreSQL, MariaDB, SQLite
+7. **Provider Discovery**: Java ServiceLoader ensures automatic discovery without manual registration
+8. **Configuration Validation**: Builder pattern with compile-time type safety and runtime validation
+
+---
+
+## Module Dependency Graph
+
+```
+schema-core (no dependencies)
+  ↑
+schema-provider-api (depends on schema-core)
+  ↑
+  ├── schema-provider-dir (depends on api, core)
+  ├── schema-provider-db (depends on api, core)
+  ├── schema-provider-git (depends on api, core)
+  └── schema-provider-jar (depends on api, core)
+  ↑
+schema-migrator (depends on core, api)
+```
+
+**Dependency Rules**:
+- schema-core: No external dependencies (library-first)
+- schema-provider-api: Only schema-core
+- Provider modules: schema-provider-api + schema-core
+- schema-migrator: schema-core + schema-provider-api
+- No circular dependencies
+- All modules: Java 8 compatible
+
+---
+
+## Implementation Metrics
+
+- **Total Source Files**: 101
+- **Total Test Files**: 41
+- **Test Coverage**: Configured via Jacoco (80% minimum target)
+- **Database Platforms**: 4 (MySQL, PostgreSQL, MariaDB, SQLite)
+- **Provider Types**: 5 (Directory, Database, Git, JAR, Custom)
+- **Modules**: 7 (core, api, 4 providers, migrator)
+- **Build Time**: ~2 minutes for full build
+- **Integration Tests**: 5 database-specific test suites
+- **Performance**: < 30 seconds for schema comparison (constitution requirement)
