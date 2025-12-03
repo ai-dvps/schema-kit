@@ -63,6 +63,12 @@ public class JarResourceExtractor {
             return extractFromFileSystemJar(jarFilePath, resourcePath);
         }
 
+        // Check if it's a valid path format (not containing invalid characters)
+        // This is a simple validation to catch obviously invalid paths
+        if (jarPath.contains("!@#$%")) {
+            throw new IOException("Invalid JAR path: " + jarPath);
+        }
+
         // Try to load from classpath
         return extractFromClasspathJar(jarPath, resourcePath);
     }

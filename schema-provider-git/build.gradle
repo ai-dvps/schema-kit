@@ -6,8 +6,8 @@ dependencies {
     implementation project(':schema-core')
     implementation project(':schema-provider-api')
 
-    // For git operations
-    implementation 'org.eclipse.jgit:org.eclipse.jgit:6.8.0.202311291450-r'
+    // For git operations - use Java 8 compatible version
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:5.13.1.202206130422-r'
 
     // For parsing SQL
     implementation 'com.aidvps:druid-parser:1.2.28-SNAPSHOT'

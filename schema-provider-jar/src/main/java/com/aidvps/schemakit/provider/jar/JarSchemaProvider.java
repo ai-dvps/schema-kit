@@ -51,7 +51,9 @@ public class JarSchemaProvider implements SchemaProvider {
     @Override
     public Schema getSchema(SchemaProviderConfig config) throws SchemaProviderException {
         if (config == null) {
-            throw new IllegalArgumentException("Configuration must not be null");
+            throw new SchemaProviderException(
+                    SchemaProviderException.ErrorCode.CONFIG_INVALID,
+                    "Configuration must not be null");
         }
 
         if (!(config instanceof JarSchemaProviderConfig)) {
